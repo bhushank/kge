@@ -9,29 +9,30 @@ import util
 import models
 import numpy as np
 
+'''
+dim = 10
+num_negs = 10
+X_s = []
+X_t = []
+for i in range(num_negs):
+    X_s.append(0.1*np.random.normal(size=[dim]))
+    X_t.append(0.1*np.random.normal(size=[dim]))
+W = np.random.normal(size=[dim,dim])
+X_s = np.asarray(X_s)
+X_t = np.asarray(X_t)
+bilinear = models.bilinear()
+s = bilinear['score']
+c = bilinear['fprop']
+scores = s(X_s,X_t,W)
+print scores
+mm = models.test_max_margin()
+sc = np.asarray([ 0.1,  0.01,   0.03,])#  0.5,  0.4,  0.4,0.5,  0.4 , 0.5 , 0.5])
+print mm(sc)
+print(c(X_s,X_t,W))
 
 def sigmoid(x):
     return np.exp(x) / (1.0 + np.exp(x))
-
-X_s = []
-X_t = []
-dim = 6
-x_s = np.random.randn(dim)
-#W = np.random.randn(dim,dim,dim)
-x_r = np.random.randn(dim)
-for i in range(3):
-    X_t.append(np.random.randn(dim))
-
-
-X_t = np.asarray(X_t)
-
-from models import transE
-f = transE()
-s = f(x_s,X_t,x_r)
-#s = f(X_s.T,X_t.T,W,x_r)
-print(s)
-print(s.shape)
-
+'''
 '''
 score = models.get_model('er-mlp')
 dim = 3
@@ -68,10 +69,10 @@ print(p_hit in paths)
 print(p_miss in paths)
 assert p_hit in paths and p_miss not in paths
 '''
-'''
+
 import json
 data = 'freebase'
-model  = 'transe'
+model  = 'sbilinear'
 base = "/home/mitarb/kotnis/Data/grouped_bilinear/{}/experiment_specs/".format(data)
 exp_name = "{}_{}".format(data,model) + "{}.json"
 config = json.load(open(base + exp_name.format("")))
@@ -80,7 +81,3 @@ for l2 in l2_arr:
     config['l2_reg'] = l2
     json.dump(config,open(base+exp_name.format("_"+str(l2)),'w'))
 
-'''
-
-#w = util.get_correlation_tensor(3)
-#print(w)

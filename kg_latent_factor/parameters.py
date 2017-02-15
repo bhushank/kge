@@ -1,4 +1,4 @@
-
+__author__ = 'Bhushan Kotnis'
 import numpy as np
 from collections import MutableMapping
 import copy
