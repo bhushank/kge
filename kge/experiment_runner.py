@@ -9,7 +9,7 @@ import optimizer
 import util
 import time
 import numpy as np
-from data import Path
+
 
 def main(exp_name,data_path):
     config = json.load(open(os.path.join(data_path,'experiment_specs',"{}.json".format(exp_name))))
@@ -34,7 +34,7 @@ def train(config,exp_name,data_path):
     json.dump(config,open(os.path.join(results_dir,'config.json'),'w'))
     is_dev = True
     data_set = data.read_dataset(data_path,dev_mode=is_dev)
-    print("\n***DEV MODE***\n".format('DEV'if is_dev else 'TEST'))
+    print("\n***{} MODE***\n".format('DEV'if is_dev else 'TEST'))
     print("Number of training data points {}".format(len(data_set['train'])))
     print("Number of dev data points {}".format(len(data_set['test'])))
 
@@ -76,15 +76,15 @@ def test(config,exp_name,data_path):
             return
     else:
         params_path = config['params_path']
-    #params = data.load_params(params_path)
+
     data_set = data.read_dataset(data_path,dev_mode=is_dev)
     rel_dimension = config.get('relation_dim', -1)
     entity_dim = config.get('entity_dim')
     neg_sampler = data.NegativeSampler(data_set['train'], data_set['test'], data_path,
-                                       config['max_neg_test'],is_dev=config['is_dev'],is_train = False)
+                                       200,is_dev=config['is_dev'],is_train = False)
     objective = algorithms.Objective(config['model'], entity_dim, rel_dimension, neg_sampler,
                                      config['param_scale'], config['l2_reg'])
-    params = data.load_params(params_path,objective.init_f)
+    params = data.load_params(params_path, objective)
     evaluate(data_set['test'],params,objective,results_dir)
 
 
@@ -96,53 +96,36 @@ def train_test(config,exp_name,data_path):
 def evaluate(data,params,objective,results_dir):
 
     def compute_metrics(ex):
-        pos = objective.predict(params, ex)
-        negs = objective.neg_sampler.get_samples(ex)
-        if len(negs) < 1:
-            return np.nan,np.nan,np.nan, np.nan, np.nan
-        neg_scores = []
-        for n in negs:
-            ex = Path(ex.s, ex.r, n)
-            if ('e',n) not in params:
-                print("WARNING entity {} is unknown, using random vector".format(n))
-            neg_scores.append(objective.predict(params, ex))
+        scores = objective.predict(params,ex,200)
+        if scores is None:
+            return np.nan,np.nan,np.nan
+        else:
+            if len(scores.shape) > 1:
+                scores = np.reshape(scores, (scores.shape[1],))
+            # Average Quantile, score[0] is positive
+            avg_quantile = util.average_quantile(np.asarray([scores[0]]),scores[1:])
+            rank = util.rank_from_quantile(avg_quantile,len(scores))
+            # HITS @ 10
+            hits_10 = 1.0 if rank<=10 else 0.0
+            return avg_quantile,1.0/rank,hits_10
 
-        neg_scores = np.asarray(neg_scores)
-        neg_scores = np.reshape(neg_scores, (neg_scores.shape[0],))
-        #scores = np.reshape(scores, (scores.shape[1],))
-        # Average Quantile, score[0] is positive
-        avg_quantile = util.average_quantile(pos,neg_scores)
-        rank = util.rank_from_quantile(avg_quantile,len(negs))
-        # HITS @ 10
-        hits_10 = 1.0 if rank<=10 else 0.0
-        hits_3  = 1.0 if rank<=3 else 0.0
-        hits_1 = 1.0 if rank <=1 else 0.0
-        return (avg_quantile,1.0/rank,hits_10,hits_3,hits_1)
-
-    mq = []
-    hits_at_10 = []
-    hits_at_1 = []
-    hits_at_3 = []
-    mrr = []
+    mean_quantile = 0.0
+    hits_at_10 = 0.0
+    mrr = 0.0
     count = 0
     for d in data:
-        avg_quantile, rr, hits_10, hits_3, hits_1 = compute_metrics(d)
-       
-        hits_at_10.append(hits_10)
-	hits_at_1.append(hits_1)
-	hits_at_3.append(hits_3)
-	mrr.append(rr)
-	mq.append(avg_quantile)
-        #hits_at_10 = (hits_at_10*count + hits_10)/(count + 1)
-        #hits_at_3 = (hits_at_3*count + hits_3)/(count + 1))
-	#mrr = (mrr*count + rr)/(count+1)
-        count += 1
-        if count%1000==0:
-             print("Query Count : {}".format(count))
+        avg_quantile, rr, hits_10 = compute_metrics(d)
+        if not np.isnan(avg_quantile):
+            mean_quantile = (mean_quantile*count + avg_quantile)/(count+1)
+            hits_at_10 = (hits_at_10*count + hits_10)/(count + 1)
+            mrr = (mrr*count + rr)/(count+1)
+            count += 1
+            if count%10000==0:
+                print("Query Count : {}".format(count))
     print('Writing Results.')
     with open(os.path.join(results_dir,'results'),'w') as f:
-        f.write("Mean Quantile : {:.4f}\nMean Reciprocal Rank : {:.4f}\nHITS@10 : {:.4f}\nHITS@3 : {:.4f}\nHITS@1 : {:.4f}\n".
-                format(np.nanmean(mq),np.nanmean(mrr),np.nanmean(hits_at_10),np.nanmean(hits_at_3),np.nanmean(hits_at_1)))
+        f.write("Mean Quantile : {:.4f}\nMean Reciprocal Rank : {:.4f}\nHITS@10 : {:.4f}\n".
+                format(mean_quantile,mrr,hits_at_10))
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

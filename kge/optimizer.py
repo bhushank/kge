@@ -27,8 +27,8 @@ class GradientDescent(object):
         self.updater = updater # updates at each iteration
         self.evaluater = evaluater # evaluates F-Score or Mean Average Precision or Rank
         # For reporting and saving params
-        self.report_steps = 100
-        self.save_steps = 200
+        self.report_steps = 100#config['report_steps']
+        self.save_steps = 1000#config['save_steps']
         self.dev_samples = config['num_dev_samples'] # number of dev samples
         # History
         self.history = {}
@@ -81,10 +81,11 @@ class GradientDescent(object):
 
     def minimize(self):
         self.steps = 0
-        rand = np.random.RandomState(2568)
+        #rand = np.random.RandomState(2568)
+        self.save()
         while True:
             train_cp = list(self.train)
-            rand.shuffle(train_cp)
+            np.random.shuffle(train_cp)
             batches = util.chunk(train_cp, self.batch_size)
 
             for batch in batches:
@@ -118,18 +119,24 @@ class GradientDescent(object):
                 if self.halt:
                     return
 
-    def calc_obj(self,data, f,sample=True):
+    def calc_obj(self,data, f,sample=True,is_rank = False, num_samples=-1):
         if sample:
             samples = util.sample(data, self.dev_samples)
         else:
             samples = data
-        values = [f(self.params,x) for x in samples]
+        if is_rank:
+            values = [f(self.params, x,num_samples) for x in samples]
+        else:
+            values = [f(self.params,x) for x in samples]
         return np.nanmean(values)
 
 
+
+
+
     def save(self):
-        if self.steps % self.report_steps == 0 and self.steps != 0:
-            curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,False)
+        if self.steps % self.save_steps == 0:
+            curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,False,True,200)
             epochs = float(self.steps * self.batch_size) / len(self.train)
             print 'steps: {}, epochs: {:.2f}'.format(self.steps, epochs)
             print("Current Score: {}, Previous Score: {}".format(curr_score,self.prev_score))
@@ -145,13 +152,13 @@ class GradientDescent(object):
                     pickle.dump(self.params.as_dict(),f)
                 self.prev_score = curr_score
                 # Reset early stop counter
-                self.early_stop_counter = 5
+                self.early_stop_counter = self.early_stop
             else:
                 self.early_stop_counter -= 1
                 print("New params worse than current, skip saving...")
-            # Stopping Criterion, do at least 3 epochs
-            if epochs > 7.0:
-                if self.early_stop_counter <= 0 or self.steps >= self.max_steps:
+            # Stopping Criterion, do at least 4 epochs
+            if epochs > 4.0:
+                if self.early_stop_counter == 0 or self.steps > self.max_steps:
                     self.halt = True
 
 

@@ -60,8 +60,8 @@ def avg_precision(true_labels,predicted_scores):
 def ranks(scores, ascending = True):
     sign = 1 if ascending else -1
     idx = np.argsort(sign*scores)
-    ranks = np.empty(scores.shape[0],dtype=int)
-    ranks[idx] = np.arange(scores.shape[0])
+    ranks = np.empty(scores.shape,dtype=int)
+    ranks[idx] = np.arange(len(scores))
     ranks += 1 # start from 1
     return ranks
 
@@ -104,8 +104,8 @@ def reciprocal_rank(scores,correct_pos):
     return 1.0/rank[correct_pos]
 
 
-def get_correlation_matrix(dim):
-    W = np.zeros((dim,dim*dim),dtype=theano.config.floatX)
+def get_correlation_tensor(dim):
+    W = np.zeros((dim,dim,dim),dtype=theano.config.floatX)
     for i in range(dim):
-        W[i,i*dim:(i+1)*dim] = 1.0
+        W[i,:,i] = np.ones(dim,dtype=theano.config.floatX)
     return W

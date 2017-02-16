@@ -1,7 +1,7 @@
 __author__ = 'Bhushan Kotnis'
 
 import unittest
-from kg_latent_factor.models import get_model
+from kge.models import get_model
 import numpy as np
 
 class TestModels(unittest.TestCase):
@@ -96,7 +96,7 @@ class TestModels(unittest.TestCase):
             W_p.append(np.random.normal(size= [dim,dim]))
             np_results.append(self.sigmoid(np.dot(np.dot(W_p[i],X_t[i]),np.transpose(X_s[i]))))
 
-        from kg_latent_factor.models import test_coupling
+        from kge.models import test_coupling
         fprop = test_coupling()
         result = fprop(np.asarray(X_s),np.asarray(X_t),np.asarray(W_p))
 
@@ -107,7 +107,7 @@ class TestModels(unittest.TestCase):
         x = np.random.uniform(0,1,dim)
         W_h = np.random.normal(size=[dim,dim])
         b = np.random.normal()
-        from kg_latent_factor.models import test_nn
+        from kge.models import test_nn
         fprop = test_nn()
         h = fprop(x,W_h,b)
         h_np = self.sigmoid(np.dot(W_h,x) + b)
@@ -134,7 +134,7 @@ class TestModels(unittest.TestCase):
         self.assertAlmostEqual(np_score.sum(),1.0,msg="Numpy scores not normalized",delta=0.0001)
         np_cost = self.cross_entropy(y[0,:],np_score[0,:])
 
-        from kg_latent_factor.models import test_ordistic
+        from kge.models import test_ordistic
         fprop = test_ordistic()
         score,cost = fprop(h,w_o,u,c,y)
         score = score[0,:]

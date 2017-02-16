@@ -6,6 +6,7 @@ import os
 import numpy as np
 from collections import defaultdict
 from parameters import SparseParams,Initialized
+import copy
 
 class Path(object):
 
@@ -60,28 +61,21 @@ class Path(object):
 
 class NegativeSampler(object):
 
-    def __init__(self,train,test,data_path,max_samples=10,is_dev = True,is_train = True):
-        self._train = set(train)
-        self._test = set(test)
-        self._train_negs = self._get_negs(train)
-        self._test_negs = self._get_negs(test)
-        self.is_dev = is_dev
-        self.max_samples = max_samples
-        self._is_train = is_train
-        self._entities = self._get_entities(train)
-        # if this is for final test dataset, then read dev data.
-        # Test negatives cannot be dev positives
-        if not is_dev:
-            dev = read_file(os.path.join(data_path,'dev'),float('inf'))
-            self._dev_negs = self._get_negs(dev)
-            self._dev = set(dev)
+    def __init__(self,triples,typed=True):
+        self._triples = set(triples)
+        self.typed = typed
+        if typed:
+            self._typed_negs = self._get_negs(triples)
+        else:
+            self._entities = self._get_entities(triples)
 
     def _get_entities(self,data):
-        entities = set()
+        entities  = set()
         for ex in data:
             entities.add(ex.s)
             entities.add(ex.t)
         return list(entities)
+
 
     def _get_negs(self,data):
         negatives = defaultdict(lambda : tuple([set(),set()]))
@@ -94,76 +88,52 @@ class NegativeSampler(object):
 
         return negatives
 
-    def _sample(self,entities,ex,is_source,num_samples):
-        samples = set()
-        num_tries = 0
-        #assert ex in self._train
-        if len(entities) <= 1:
-            return samples
-        threshold = len(entities)-1 if len(entities) <= num_samples else 5000
-        #rand = np.random.RandomState(seed=3456)
-        while True:
-            # ToDO: Highly inefficient way to sample
-
-            idx = num_tries if len(entities) <= num_samples else np.random.randint(0, len(entities))
-            p = Path(entities[idx], ex.r, ex.t) if is_source else Path(ex.s, ex.r, entities[idx])
-            if p not in self._train and entities[idx] not in samples:
-                # Correct order, if is_dev then test = dev, else dev neq test
-                if not self._is_train:
-                    if p not in self._test:
-                        if not self.is_dev:
-                            if p not in self._dev:
-                                samples.add(entities[idx])
-                        else:
-                            samples.add(entities[idx])
-                else:
-                    samples.add(entities[idx])
-
-            if len(samples) == min(len(entities)-1,num_samples) or num_tries >= threshold:
-                return list(samples)
-            num_tries += 1
-
-    def get_samples(self,ex,is_source=False,num_samples=-1):
-        # if training data, then get negatives from train_negs
-        r = ex.r[0]
-        if num_samples < 0:
-            num_samples = self.max_samples
-        # Typed Negatives for train
-
-        if self._is_train:
-            entities = list(self._train_negs[r][0]) if is_source else list(self._train_negs[r][1])
-            return self._sample(entities,ex,is_source,num_samples)
-        else:
-            return self._sample(self._entities, ex, is_source, num_samples)
+    def _get_candidates(self,is_source,r):
         '''
-        else:
-            #could be dev or test
-            if self.is_dev:
-                # use train_neg and test_neg (dev)
-                entities_tr = list(self._train_negs[r][1])
-                entities_dev = list(self._test_negs[r][1])
-                entities_tr.extend(entities_dev)
-                return self._sample(list(set(entities_tr)), ex,is_source,num_samples)
+        Returns a copy of the candidates, so that sampled negatives
+        can be removed from the copy without affecting state
+        :param is_source: boolean
+        :param r: string
+        :return: candidates: set
+        '''
+        if self.typed:
+            candidates = self._typed_negs[r]
+            if is_source:
+                return copy.copy(candidates[0])
             else:
-                # use train_neg, dev_neg and test_neg
-                entities_tr = list(self._train_negs[r][1])
-                entities_dev = list(self._dev_negs[r][1])
-                entities_test = list(self._test_negs[r][1])
-                entities_tr.extend(entities_dev)
-                entities_tr.extend(entities_test)
-                return self._sample(list(set(entities_tr)), ex,is_source, num_samples)
-        '''
+                return copy.copy(candidates[1])
+        return copy.copy(self._entities)
+
+    def sample(self,ex,is_source,num_samples):
+        samples = set()
+        candidates = list(self._get_candidates(is_source,ex.r[0]))
+        if len(candidates) <= 1:
+            return samples
+        if len(candidates) <= num_samples:
+            return candidates
+
+        while True:
+            idx = np.random.randint(0, len(candidates))
+            p = Path(candidates[idx], ex.r, ex.t) if is_source else Path(ex.s, ex.r, candidates[idx])
+            if p not in self._triples:
+                    samples.add(candidates[idx])
+                    candidates.remove(candidates[idx])
+
+            if len(samples) <= num_samples:
+                return list(samples)
+
+
 
 
 
 @util.memoize
-def load_params(params_path,init_f):
+def load_params(params_path,objective):
     print("Loading Params from {}".format(params_path))
 
     with open(params_path,'r') as f:
         params = pickle.load(f)
     print("Finished Loading Params.")
-    return Initialized(SparseParams(params),init_f)
+    return Initialized(SparseParams(params),objective.init_f)
 
 
 def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_path_data=False):
