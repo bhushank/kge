@@ -88,25 +88,25 @@ class NegativeSampler(object):
 
         return negatives
 
-    def _get_candidates(self,is_source,r):
+    def _get_candidates(self,is_target,r):
         '''
         Returns a copy of the candidates, so that sampled negatives
         can be removed from the copy without affecting state
-        :param is_source: boolean
+        :param is_target: boolean
         :param r: string
         :return: candidates: set
         '''
         if self.typed:
             candidates = self._typed_negs[r]
-            if is_source:
-                return copy.copy(candidates[0])
-            else:
+            if is_target:
                 return copy.copy(candidates[1])
+            else:
+                return copy.copy(candidates[0])
         return copy.copy(self._entities)
 
-    def sample(self,ex,is_source,num_samples):
+    def sample(self,ex,is_target,num_samples):
         samples = set()
-        candidates = list(self._get_candidates(is_source,ex.r[0]))
+        candidates = list(self._get_candidates(is_target,ex.r[0]))
         if len(candidates) <= 1:
             return samples
         if len(candidates) <= num_samples:
@@ -114,7 +114,7 @@ class NegativeSampler(object):
 
         while True:
             idx = np.random.randint(0, len(candidates))
-            p = Path(candidates[idx], ex.r, ex.t) if is_source else Path(ex.s, ex.r, candidates[idx])
+            p = Path(ex.s, ex.r, candidates[idx]) if is_target else  Path(candidates[idx], ex.r, ex.t)
             if p not in self._triples:
                     samples.add(candidates[idx])
                     candidates.remove(candidates[idx])

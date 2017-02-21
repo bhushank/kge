@@ -15,28 +15,29 @@ class TestModels(unittest.TestCase):
     def sigmoid(self,x):
         return np.exp(x)/( 1.0 + np.exp(x))
 
+    def max_margin(self,scores):
+        margin = np.maximum(0,1-scores[0] + scores[1:])
+        return np.sum(margin)
+
     def numpy_bilinear_model(self,x_s,x_t,W):
-        score = []
+        scores = []
         for u,v in zip(x_s,x_t):
-            score.append(self.sigmoid(np.dot(np.dot(W,v),np.transpose(u))))
-        score = np.asarray(score)
-        margin = score[0] - score[1:]
-        cost = np.sum(np.maximum(np.zeros(7), margin))
+            scores.append(np.dot(np.dot(W,v),np.transpose(u)))
+        scores = np.asarray(scores)
+        score = scores[0]
+        cost = self.max_margin(scores)
         return score,cost
 
-    def numpy_group_model(self,X_s,X_t,x_r,W):
-        score = []
+    def numpy_s_bilinear_model(self,X_s,X_t,x_r,W):
+        scores = []
         for u,v in zip(X_s,X_t):
             outer = np.reshape(np.outer(u,v),(1,-1))[0,:]
             z = np.dot(W,outer)
-            score.append(self.sigmoid(np.dot(z,x_r)))
-        score = np.asarray(score)
-        margin = score[0] - score[1:]
-        cost = np.sum(np.maximum(np.zeros(7),margin))
-        #score = score/score.sum()
-        return score,cost
+            scores.append(np.dot(z,x_r))
+        cost = self.max_margin(scores)
+        return scores[0],cost
 
-    def test_group_interaction_model(self):
+    def test_s_bilinear_model(self):
         dim = 10
         r_dim = 10
         num_negs = 8
@@ -49,7 +50,7 @@ class TestModels(unittest.TestCase):
         W = np.random.uniform(size = [r_dim,dim*dim])
         x_r = np.random.uniform(size=[r_dim])
 
-        np_score,np_cost = self.numpy_group_model(X_s,X_t,x_r,W)
+        np_score,np_cost = self.numpy_s_bilinear_model(X_s,X_t,x_r,W)
         gi_model = get_model("group interaction")
         score = gi_model['score']
         fprop = gi_model['fprop']
@@ -64,10 +65,9 @@ class TestModels(unittest.TestCase):
 
         dim = 10
         num_negs = 8
-        X_s = []
+        X_s = 0.1*np.random.normal(size=[dim])
         X_t = []
         for i in range(num_negs):
-            X_s.append(0.1*np.random.normal(size=[dim]))
             X_t.append(0.1*np.random.normal(size=[dim]))
         W = np.random.normal(size=[dim,dim])
 
@@ -96,7 +96,7 @@ class TestModels(unittest.TestCase):
             W_p.append(np.random.normal(size= [dim,dim]))
             np_results.append(self.sigmoid(np.dot(np.dot(W_p[i],X_t[i]),np.transpose(X_s[i]))))
 
-        from kge.models import test_coupling
+        from kge.theano_models import test_coupling
         fprop = test_coupling()
         result = fprop(np.asarray(X_s),np.asarray(X_t),np.asarray(W_p))
 
@@ -107,7 +107,7 @@ class TestModels(unittest.TestCase):
         x = np.random.uniform(0,1,dim)
         W_h = np.random.normal(size=[dim,dim])
         b = np.random.normal()
-        from kge.models import test_nn
+        from kge.theano_models import test_nn
         fprop = test_nn()
         h = fprop(x,W_h,b)
         h_np = self.sigmoid(np.dot(W_h,x) + b)
@@ -134,7 +134,7 @@ class TestModels(unittest.TestCase):
         self.assertAlmostEqual(np_score.sum(),1.0,msg="Numpy scores not normalized",delta=0.0001)
         np_cost = self.cross_entropy(y[0,:],np_score[0,:])
 
-        from kge.models import test_ordistic
+        from kge.theano_models import test_ordistic
         fprop = test_ordistic()
         score,cost = fprop(h,w_o,u,c,y)
         score = score[0,:]

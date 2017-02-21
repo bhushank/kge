@@ -2,7 +2,21 @@ __author__ = 'Bhushan Kotnis'
 
 import theano.tensor as T
 import theano
-import util
+
+@util.memoize
+def get_model(model):
+    if model=="bilinear":
+        return bilinear()
+    elif model=="coupled bilinear":
+        return coupled_bilinear()
+    elif model=='s-rescal':
+        return s_rescal()
+    elif model == 'er-mlp':
+        return ermlp()
+    elif model == 'transE':
+        return transE()
+    else:
+        raise NotImplementedError()
 
 
 
@@ -16,18 +30,18 @@ def s_rescal():
 
     scores = T.nnet.sigmoid(x_r.dot(X_s.T.dot(W).dot(X_t)))
     cost = max_margin(scores)
-    gx_s, gx_t, gW, gx_r = T.grad(cost,wrt=[X_s,X_t,W,x_r])
+    gx_s, gx_t, gx_r, gW = T.grad(cost,wrt=[X_s,X_t,x_r,W])
 
-    print('Compiling Group Interaction fprop')
-    fprop = theano.function([X_s,X_t,W,x_r],cost,name='fprop',mode='FAST_RUN')
+    print('Compiling s-rescal fprop')
+    fprop = theano.function([X_s,X_t,x_r,W],cost,name='fprop',mode='FAST_RUN')
     fprop.trust_imput = True
 
-    print('Compiling Group Interaction bprop')
-    bprop = theano.function([X_s,X_t,W,x_r],[gx_s,gx_t,gW,gx_r],name='bprop',mode='FAST_RUN')
+    print('Compiling s-rescal bprop')
+    bprop = theano.function([X_s,X_t,x_r,W],[gx_s,gx_t,gx_r,gW],name='bprop',mode='FAST_RUN')
     bprop.trust_input = True
 
-    print('Compiling Group Interaction Score')
-    score = theano.function([X_s,X_t,W,x_r],scores, name = 'score',mode='FAST_RUN')
+    print('Compiling s-rescal score')
+    score = theano.function([X_s,X_t,x_r,W],scores, name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop':fprop,'bprop':bprop,'score':score}

@@ -2,7 +2,6 @@ __author__ = 'Bhushan Kotnis'
 
 from parameters import SparseParams
 import numpy as np
-from models import get_model
 import theano
 import util
 from data import Path
@@ -110,171 +109,10 @@ class RankEvaluater(Evaluater):
         return ranks[-1]
 
 
-'''
-----------------------------------------------------
-'''
 
 
 
-class Model(object):
 
-
-    def cost(self,params,ex):
-        '''
-        Computes the cost function without the regularizer
-        :param params: SparseParams
-        :param ex: Path
-        :return: cost
-        '''
-        raise NotImplementedError()
-
-
-    def predict(self,params,ex):
-        raise NotImplementedError()
-
-    def gradient(self,params,ex):
-        '''
-        Computes the gradient SparseParams
-        :param params: Initialized SparseParams
-        :param ex: Path
-        :return grad: SparseParams
-        '''
-        raise NotImplementedError()
-
-    def init_f(self,key):
-        raise NotImplementedError()
-
-
-    '''
-    Unpacking methods
-    '''
-    def unpack_triple(self,params,ex):
-
-        W_r = self.unpack_relations(params,ex.r)
-        x_s = self.unpack_entities(params,ex.s)
-        x_t = self.unpack_entities(params,ex.t)
-        return x_s, x_t, W_r
-
-    def unpack_entities(self,params,entities):
-        if isinstance(entities,str):
-            return self.build_entity(params,entities)
-        else:
-            if len(entities) == 1:
-                return self.build_entity(params, entities[0])
-            return np.asarray([self.build_entity(params,e) for e in entities],dtype=theano.config.floatX).squeeze().T
-
-    def unpack_relations(self,params,rels):
-        # triple models expect a vector or matrix
-        if len(rels)==1:
-            return self.build_relation(params,rels[0])
-        # coupled models expect a 3D Tensor
-        return np.asarray([self.build_relation(params,r) for r in rels],dtype=theano.config.floatX)
-
-    def build_entity(self,params,e):
-        return params[('e',e)]
-
-    def build_relation(self,params,r):
-        return params[('r', r)]
-
-    '''
-    Gradient Collection methods
-    '''
-
-    def collect_entity_grads(self,grad,e,g_e):
-        return self.add_to_grad(grad,('e',e),g_e)
-
-    def collect_rel_grads(self,grad,rels,g_r):
-        assert isinstance(rels,tuple)
-        return self.add_to_grad(grad,('r',rels[0]),g_r)
-
-    def add_to_grad(self,grad,key,val):
-        if key in grad:
-            grad[key] += val
-        else:
-            grad[key] = val
-        return grad
-
-
-
-class Bilinear(Model):
-
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        self.e_d = e_d
-        self.neg_sampler = neg_sampler
-        self.num_negs = num_negs
-        self.param_scale = param_scale
-        self.l2_reg = l2_reg
-        self.model = get_model('bilinear')
-        self.fprop = self.model['fprop']
-        self.bprop = self.model['bprop']
-        self.score = self.model['score']
-
-
-    def cost(self,params,ex):
-        cost = 0.0
-        # Unpack Params
-        x_s, x_t, W_r = self.unpack_triple(params, ex)
-        t_negs = self.neg_sampler.get_samples(ex, False)
-        if len(t_negs)>0:
-            t_negs = self.unpack_entities(params, t_negs)
-            X_t_batch = np.append(x_t, t_negs, axis=1)
-            x_s = np.transpose(x_s)
-            return self.fprop(x_s, X_t_batch, W_r)
-        return cost
-
-    def predict(self,params,ex):
-        x_s, x_t, W_r = self.unpack_triple(params, ex)
-        x_s = np.transpose(x_s)
-        return self.score(x_s, x_t, W_r)
-
-
-    def init_f(self,key):
-        assert isinstance(key, tuple)
-        if key[0] == 'e':
-            return util.to_floatX(self.param_scale * np.random.randn(self.e_d, 1))
-        if key[0] == 'r':
-            return util.to_floatX(self.param_scale * np.random.randn(self.e_d, self.e_d))
-
-    def gradient(self,params,ex):
-        grad = SparseParams(d=dict())
-        s_negs = self.neg_sampler.get_samples(ex, True)
-        t_negs = self.neg_sampler.get_samples(ex, False)
-        if len(t_negs) > 0:
-            # bprop for negative targets
-            self.bprop_model(grad,params, ex,t_negs, True)
-        if len(s_negs) > 0:
-            # bprop for negative sources
-            self.bprop_model(grad, params, ex,s_negs, False)
-        return grad
-
-    def bprop_model(self, grad, params, ex, negs, is_target=True):
-        x_s, x_t, W_r = self.unpack_triple(params, ex)
-        neg_vectors = self.unpack_entities(params, negs)
-        if is_target:
-            X_t_batch = np.append(x_t, neg_vectors, axis=1)
-            x_s = np.transpose(x_s)
-            gx_s, gx_t, gW_r = self.bprop(x_s, X_t_batch, W_r)
-            self.collect_entity_grads(grad, ex.s, gx_s)
-            negs.insert(0, ex.t)
-            self.collect_entity_grads(grad, negs, gx_t)
-        else:
-            X_s_batch = np.append(x_s, neg_vectors, axis=1)
-            X_s_batch = np.transpose(X_s_batch)
-            gx_s, gx_t, gW_r = self.bprop(X_s_batch, x_t, W_r)
-            grad = self.collect_entity_grads(grad, ex.t, gx_t)
-            negs.insert(0, ex.s)
-            grad = self.collect_entity_grads(grad, negs, gx_s)
-
-        return grad
-
-
-
-class S_Rescal(Model):
-
-class HolE(Model):
-class TransE(Model):
-class TypeRegularizer(Model):
-class CoupledRescal(Model):
 
 
 #ToDO: Use inheritence and implement different versions of cost, gradient and predict for cleaner code
