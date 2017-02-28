@@ -104,11 +104,17 @@ class NegativeSampler(object):
                 return copy.copy(candidates[0])
         return copy.copy(self._entities)
 
-    def sample(self,ex,is_target,num_samples):
+    def sample(self,ex,num_samples,is_target=True):
         samples = set()
-        candidates = list(self._get_candidates(is_target,ex.r[0]))
-        if len(candidates) <= 1:
-            return samples
+        candidates = self._get_candidates(is_target,ex.r[0])
+        if is_target:
+            if ex.t in candidates:
+                candidates.remove(ex.t)
+        else:
+            if ex.s in candidates:
+                candidates.remove(ex.s)
+        candidates = list(candidates)
+        # source or target need not be present in candidates (dev data does not overlap with train)
         if len(candidates) <= num_samples:
             return candidates
 
@@ -117,23 +123,24 @@ class NegativeSampler(object):
             p = Path(ex.s, ex.r, candidates[idx]) if is_target else  Path(candidates[idx], ex.r, ex.t)
             if p not in self._triples:
                     samples.add(candidates[idx])
-                    candidates.remove(candidates[idx])
+            candidates.remove(candidates[idx])
 
-            if len(samples) <= num_samples:
+            if len(samples) >= num_samples or len(candidates)<=0:
                 return list(samples)
 
 
 
 
 
+
 @util.memoize
-def load_params(params_path,objective):
+def load_params(params_path,model):
     print("Loading Params from {}".format(params_path))
 
     with open(params_path,'r') as f:
         params = pickle.load(f)
     print("Finished Loading Params.")
-    return Initialized(SparseParams(params),objective.init_f)
+    return Initialized(SparseParams(params),model.init_f)
 
 
 def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_path_data=False):

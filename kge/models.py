@@ -4,21 +4,34 @@ from parameters import SparseParams
 import numpy as np
 import theano
 import util
-import theano_models
+from theano_models import get_model as get_theano_model
+import cPickle as pickle
+import constants
+import copy
 
+def get_model(config, neg_sampler):
+    model = config['model']
 
-
+    if model == constants.bilinear:
+        return Bilinear(config, neg_sampler)
+    elif model == constants.s_rescal:
+        return S_Rescal(config, neg_sampler)
+    elif model == constants.hole:
+        return HolE(config, neg_sampler)
+    elif model == constants.transE:
+        return TransE(config, neg_sampler)
+    else:
+        raise NotImplementedError('Model {} not implemented'.format(model))
 
 class Model(object):
 
-    def __init__(self,model,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        self.model_name = model
-        self.e_d = e_d
+    def __init__(self,config,neg_sampler):
+        self.model_name = config['model']
+        self.e_d = config['entity_dim']
         self.neg_sampler = neg_sampler
-        self.num_negs = num_negs
-        self.param_scale = param_scale
-        self.l2_reg = l2_reg
-        self.model = theano_models.get_model(model)
+        self.neg_samples = config.get('num_dev_negs',constants.num_dev_negs)
+        self.param_scale = config.get('param_scale',constants.param_scale)
+        self.model = get_theano_model(self.model_name)
         self.fprop = self.model['fprop']
         self.bprop = self.model['bprop']
         self.score = self.model['score']
@@ -86,20 +99,44 @@ class Model(object):
     def build_relation(self,params,r):
         return params[('r', r)]
 
+    def assert_negs(self,is_target,ex,negs):
+        if is_target:
+            assert ex.t not in negs
+        else:
+            assert ex.s not in negs
+
     def get_neg_batch(self,params,ex,x,is_target):
-        t_negs = self.neg_sampler.get_samples(ex, is_target)
-        if len(t_negs)>0:
-            t_negs = self.unpack_entities(params, t_negs)
-            X_t_batch = np.append(x, t_negs, axis=1)
-            return X_t_batch,t_negs
+        negs = self.neg_sampler.sample(ex, self.neg_samples, is_target)
+        if len(negs)>0:
+            self.assert_negs(is_target,ex,negs)
+            v_negs = self.unpack_entities(params, negs)
+            X_batch = np.append(x, v_negs, axis=1)
+            return X_batch,negs
         return list(),list()
 
     '''
     Gradient Collection methods
     '''
+    def enforce_shape(self,nd_array):
+        '''
+        Force entity vector to conform to e_d x 1
+        :param nd_array:
+        :return:
+        '''
+        if len(nd_array.shape) <=1:
+            return np.reshape(nd_array,(nd_array.shape[0],1))
+        elif nd_array.shape[1] > nd_array.shape[0]:
+            return np.transpose(nd_array)
+        else:
+            return nd_array
 
-    def collect_entity_grads(self,grad,e,g_e):
-        return self.add_to_grad(grad,('e',e),g_e)
+    def collect_batch_entity_grads(self,grad,entities,g_e,enforce_shape):
+        for ind,e in enumerate(entities):
+            grad = self.collect_entity_grads(grad,('e',e),g_e[ind],enforce_shape)
+        return grad
+
+    def collect_entity_grads(self,grad,e,g_e,enforce_shape):
+        return self.add_to_grad(grad,('e',e),enforce_shape(g_e))
 
     def collect_rel_grads(self,grad,rels,g_r):
         assert isinstance(rels,tuple)
@@ -116,13 +153,13 @@ class Model(object):
 
 class Bilinear(Model):
 
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        super(Bilinear,self).__init__('bilinear',e_d,neg_sampler,num_negs,param_scale,l2_reg)
+    def __init__(self,config,neg_sampler):
+        super(Bilinear,self).__init__(config,neg_sampler)
 
 
     def cost(self,params,ex):
         x_s, x_t, W_r = self.unpack_triple(params, ex)
-        X_t_batch,t_negs = self.neg_sampler.get_samples(ex,x_t, False)
+        X_t_batch,t_negs = self.get_neg_batch(params,ex,x_t,True)
         if len(t_negs)>0:
             x_s = np.transpose(x_s)
             return self.fprop(x_s, X_t_batch, W_r)
@@ -142,24 +179,27 @@ class Bilinear(Model):
             return util.to_floatX(self.param_scale * np.random.randn(self.e_d, self.e_d))
 
 
-
     def bprop_model(self, grad, params, ex, is_target=True):
         x_s, x_t, W_r = self.unpack_triple(params, ex)
 
         if is_target:
             X_t_batch, negs = self.get_neg_batch(params,ex,x_t,is_target)
+            if len(negs)<=0:
+                return grad
             x_s = np.transpose(x_s)
             gx_s, gx_t, gW_r = self.bprop(x_s, X_t_batch, W_r)
-            grad = self.collect_entity_grads(grad, ex.s, gx_s)
+            grad = self.collect_entity_grads(grad, ex.s, gx_s.T,self.enforce_shape)
             negs.insert(0, ex.t)
-            grad = self.collect_entity_grads(grad, negs, gx_t)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_t.T,self.enforce_shape)
         else:
             X_s_batch,negs = self.get_neg_batch(params,ex,x_s,is_target)
+            if len(negs)<=0:
+                return grad
             X_s_batch = np.transpose(X_s_batch)
             gx_s, gx_t, gW_r = self.bprop(X_s_batch, x_t, W_r)
-            grad = self.collect_entity_grads(grad, ex.t, gx_t)
+            grad = self.collect_entity_grads(grad, ex.t, gx_t,self.enforce_shape)
             negs.insert(0, ex.s)
-            grad = self.collect_entity_grads(grad, negs, gx_s)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_s,self.enforce_shape)
 
         grad = self.collect_rel_grads(grad, ex.r, gW_r)
         return grad
@@ -167,9 +207,9 @@ class Bilinear(Model):
 
 
 class S_Rescal(Model):
-    def __init__(self,e_d,r_d,neg_sampler,num_negs,param_scale,l2_reg):
-        super(S_Rescal, self).__init__(self.model_name, e_d, neg_sampler, num_negs, param_scale, l2_reg)
-        self.r_d = r_d
+    def __init__(self,config,neg_sampler):
+        super(S_Rescal, self).__init__(config, neg_sampler)
+        self.r_d = config.get('relation_dim',config['entity_dim'])
 
     def unpack_params(self,params,ex):
         x_s, x_t, x_r = self.unpack_triple(params, ex)
@@ -181,15 +221,13 @@ class S_Rescal(Model):
 
     def predict(self,params,ex):
         x_s,x_t,x_r,W = self.unpack_params(params,ex)
-        return self.score(x_s, x_t, W, x_r)
+        return self.score(x_s, x_t, x_r, W)
 
     def cost(self,params,ex):
         x_s, x_t, x_r, W = self.unpack_params(params, ex)
-        t_negs = self.neg_sampler.get_samples(ex, False)
-        if len(t_negs) > 0:
-            t_negs = self.unpack_entities(params, t_negs)
-            X_t_batch = np.append(x_t, t_negs, axis=1)
-            return self.fprop(x_s, X_t_batch, W, x_r)
+        X_t_batch, negs = self.get_neg_batch(params, ex, x_t, True)
+        if len(negs) > 0:
+            return self.fprop(x_s, X_t_batch, x_r, W)
         else:
             return 0.0
 
@@ -197,19 +235,24 @@ class S_Rescal(Model):
         x_s, x_t, x_r, W = self.unpack_params(params, ex)
         if is_target:
             X_t_batch, negs = self.get_neg_batch(params, ex, x_t, is_target)
+            if len(negs)<=0:
+                return grad
             gx_s, gx_t, gx_r, gW = self.bprop(x_s, X_t_batch, x_r, W)
-            grad = self.collect_entity_grads(grad, ex.s, gx_s)
+            grad = self.collect_entity_grads(grad, ex.s, gx_s,self.enforce_shape)
             negs.insert(0, ex.t)
-            grad = self.collect_entity_grads(grad, negs, gx_t)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_t.T,self.enforce_shape)
         else:
             X_s_batch, negs = self.get_neg_batch(params, ex, x_s, is_target)
+            if len(negs)<=0:
+                return grad
             gx_s, gx_t, gx_r, gW = self.bprop(X_s_batch,x_t, x_r, W)
-            grad = self.collect_entity_grads(grad, ex.t, gx_t)
+            grad = self.collect_entity_grads(grad, ex.t, gx_t,self.enforce_shape)
             negs.insert(0, ex.s)
-            grad = self.collect_entity_grads(grad, negs, gx_s)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_s.T,self.enforce_shape)
 
         grad = self.collect_param_grads(grad, 'W', gW)
         grad = self.collect_rel_grads(grad, ex.r, gx_r)
+
         return grad
 
     def init_f(self,key):
@@ -223,27 +266,34 @@ class S_Rescal(Model):
         raise NotImplementedError('Param not found')
 
 class HolE(S_Rescal):
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        super(HolE, self).__init__(e_d,e_d, neg_sampler, num_negs, param_scale, l2_reg)
+    def __init__(self,config,neg_sampler):
+        config['relation_dim'] = config['entity_dim']
+        config['model'] = constants.s_rescal
+        super(HolE, self).__init__(config, neg_sampler)
 
     def bprop_model(self,grad,params,ex,is_target):
         x_s, x_t, x_r, W = self.unpack_params(params, ex)
         if is_target:
             X_t_batch, negs = self.get_neg_batch(params, ex, x_t, is_target)
+            if len(negs)<=0:
+                return grad
             # Don't update W for HolE
             gx_s, gx_t, gx_r, _ = self.bprop(x_s, X_t_batch, x_r, W)
-            grad = self.collect_entity_grads(grad, ex.s, gx_s)
+            grad = self.collect_entity_grads(grad, ex.s, gx_s,self.enforce_shape)
             negs.insert(0, ex.t)
-            grad = self.collect_entity_grads(grad, negs, gx_t)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_t.T,self.enforce_shape)
         else:
             X_s_batch, negs = self.get_neg_batch(params, ex, x_s, is_target)
+            if len(negs)<=0:
+                return grad
             # Don't update W for HolE
             gx_s, gx_t, gx_r, _ = self.bprop(X_s_batch,x_t, x_r, W)
-            grad = self.collect_entity_grads(grad, ex.t, gx_t)
+            grad = self.collect_entity_grads(grad, ex.t, gx_t.T,self.enforce_shape)
             negs.insert(0, ex.s)
-            grad = self.collect_entity_grads(grad, negs, gx_s)
+            grad = self.collect_batch_entity_grads(grad, negs, gx_s.T,self.enforce_shape)
 
         grad = self.collect_rel_grads(grad, ex.r, gx_r)
+
         return grad
 
     def init_f(self,key):
@@ -259,19 +309,19 @@ class HolE(S_Rescal):
 
 
 class TransE(Model):
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        super(TransE, self).__init__('s-rescal', e_d, neg_sampler, num_negs, param_scale, l2_reg)
+    def __init__(self,config,neg_sampler):
+        super(TransE, self).__init__(config, neg_sampler)
 
     def cost(self,params,ex):
         x_s, x_t, x_r = self.unpack_triple(params, ex)
-        X_t_batch,t_negs = self.neg_sampler.get_samples(ex,x_t, False)
+        X_t_batch,t_negs = self.get_neg_batch(params,ex,x_t, True)
         if len(t_negs)>0:
-            return self.fprop(x_s, X_t_batch, x_r)
+            return self.fprop(x_s, X_t_batch.T, x_r)
         return 0.0
 
     def predict(self,params,ex):
         x_s, x_t, x_r = self.unpack_triple(params, ex)
-        return self.score(x_s, x_t, x_r)
+        return self.score(x_s, np.asarray([x_t]), x_r)
 
     def init_f(self,key):
         assert isinstance(key, tuple)
@@ -290,36 +340,66 @@ class TransE(Model):
     def bprop_model(self, grad, params, ex,is_target=True):
         x_s, x_t, x_r = self.unpack_triple(params, ex)
         X_t_batch, negs = self.get_neg_batch(params,ex,x_t,is_target)
-        x_s = np.transpose(x_s)
-        gx_s, gx_t, gx_r = self.bprop(x_s, X_t_batch, x_r)
-        grad = self.collect_entity_grads(grad, ex.s, gx_s)
+        if len(negs) <= 0:
+            return grad
+        gx_s, gx_t, gx_r = self.bprop(x_s, X_t_batch.T, x_r)
+        grad = self.collect_entity_grads(grad, ex.s, gx_s,self.enforce_shape)
         negs.insert(0, ex.t)
-        grad = self.collect_entity_grads(grad, negs, gx_t)
+        grad = self.collect_batch_entity_grads(grad, negs, gx_t,self.enforce_shape)
         grad = self.collect_rel_grads(grad, ex.r, gx_r)
         return grad
 
+    def enforce_shape(self,nd_array):
+        '''
+        Force entity vector to conform to e_d x 1
+        :param nd_array:
+        :return:
+        '''
+        return nd_array
+
+
+    def get_neg_batch(self,params,ex,x,is_target):
+        negs = self.neg_sampler.sample(ex, self.neg_samples, is_target)
+        if len(negs)>0:
+            self.assert_negs(is_target, ex, negs)
+            v_negs = self.unpack_entities(params, negs)
+            if len(negs)==1:
+                v_negs = np.reshape(v_negs,(v_negs.shape[0],1))
+            X_batch = np.append(np.reshape(x,(x.shape[0],1)), v_negs, axis=1)
+            return X_batch,negs
+        return list(),list()
 
 
 class TypeRegularizer(Model):
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        self.e_d = e_d
-        self.neg_sampler = neg_sampler
-        self.num_negs = num_negs
-        self.param_scale = param_scale
-        self.l2_reg = l2_reg
-        self.model = theano_models.bilinear()
-        self.fprop = self.model['fprop']
-        self.bprop = self.model['bprop']
-        self.score = self.model['score']
+    def __init__(self,config,neg_sampler):
+        super(TypeRegularizer, self).__init__(config, neg_sampler)
+        self.cats = self.load_categories(config['category path'])
+        self.num_cat_negs = config.get('num_dev_negs',constants.num_dev_negs)
+        self.all_cats = self.get_all_cats()
+
+    def load_categories(self,cat_path):
+        print("Loading categories from {}".format(cat_path))
+
+        with open(cat_path) as f:
+            cats = pickle.load(f)
+        print("Finished loading category data")
+        return cats
+
+    def get_all_cats(self):
+        all_cats = set()
+        for c in self.cats.itervalues():
+            all_cats.update(c)
+        return all_cats
+    
+    def cats_for_id(self,id):
+        pos_cats = self.cats.get(id,set())
+        pos_cats.add(constants.universal_cat)
+        return pos_cats
+
+    def sample_neg_cats(self,id):
+        pos_cats = self.cats_for_id(id)
+        pos_cats = copy.copy(pos_cats)
 
 class CoupledRescal(Model):
-    def __init__(self,e_d,neg_sampler,num_negs,param_scale,l2_reg):
-        self.e_d = e_d
-        self.neg_sampler = neg_sampler
-        self.num_negs = num_negs
-        self.param_scale = param_scale
-        self.l2_reg = l2_reg
-        self.model = theano_models.bilinear()
-        self.fprop = self.model['fprop']
-        self.bprop = self.model['bprop']
-        self.score = self.model['score']
+    def __init__(self,config,neg_sampler):
+        super(CoupledRescal, self).__init__(config, neg_sampler)

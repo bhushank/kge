@@ -2,7 +2,6 @@ __author__ = 'Bhushan Kotnis'
 
 import numpy as np
 import theano
-from sklearn.metrics import average_precision_score
 import itertools
 
 def chunk(arr,chunk_size):
@@ -51,17 +50,13 @@ def f1_score(true_positives,positives):
     recall = float(hits) / len(true_positives)
     return 2.0*precision*recall/(precision + recall)
 
-#ToDO: Check, only one positive many negatives, doesn't make sense to use ap
-def avg_precision(true_labels,predicted_scores):
-    ap = average_precision_score(true_labels,predicted_scores,average='None')
-    # for class 1, using macros averaging
-    return ap[0]
+
 
 def ranks(scores, ascending = True):
     sign = 1 if ascending else -1
     idx = np.argsort(sign*scores)
-    ranks = np.empty(scores.shape,dtype=int)
-    ranks[idx] = np.arange(len(scores))
+    ranks = np.empty(scores.shape[0],dtype=int)
+    ranks[idx] = np.arange(scores.shape[0])
     ranks += 1 # start from 1
     return ranks
 
@@ -99,7 +94,7 @@ def average_quantile(positives,negatives):
 
 # For one positive and many negatives
 def reciprocal_rank(scores,correct_pos):
-    assert correct_pos < len(scores)
+    assert correct_pos < scores.shape[0]
     rank =  ranks(scores,ascending=False)
     return 1.0/rank[correct_pos]
 

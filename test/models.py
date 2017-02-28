@@ -1,7 +1,7 @@
 __author__ = 'Bhushan Kotnis'
 
 import unittest
-from kge.models import get_model
+from kge.theano_models import get_model
 import numpy as np
 
 class TestModels(unittest.TestCase):
@@ -21,44 +21,44 @@ class TestModels(unittest.TestCase):
 
     def numpy_bilinear_model(self,x_s,x_t,W):
         scores = []
-        for u,v in zip(x_s,x_t):
-            scores.append(np.dot(np.dot(W,v),np.transpose(u)))
+        for v in x_t:
+            scores.append(self.sigmoid(np.dot(np.dot(W,v),np.transpose(x_s))))
         scores = np.asarray(scores)
-        score = scores[0]
         cost = self.max_margin(scores)
-        return score,cost
+        return scores,cost
 
-    def numpy_s_bilinear_model(self,X_s,X_t,x_r,W):
+    def numpy_s_bilinear_model(self,x_s,X_t,x_r,W):
         scores = []
-        for u,v in zip(X_s,X_t):
-            outer = np.reshape(np.outer(u,v),(1,-1))[0,:]
-            z = np.dot(W,outer)
-            scores.append(np.dot(z,x_r))
+        for v in X_t:
+            outer = np.outer(x_s,v)
+            z = np.zeros(x_r.shape[0])
+            for i in range(x_r.shape[0]):
+                z[i] = np.sum(np.sum(W[i]*outer,axis=0))
+            scores.append(self.sigmoid(np.dot(z,x_r)))
         cost = self.max_margin(scores)
-        return scores[0],cost
+        return scores,cost
 
     def test_s_bilinear_model(self):
         dim = 10
         r_dim = 10
         num_negs = 8
-        X_s = []
+        X_s = 0.1 * np.random.normal(size=[dim,1])
         X_t = []
         for i in range(num_negs):
-            X_s.append(0.1*np.random.uniform(size = [dim]))
             X_t.append(0.1*np.random.uniform(size = [dim]))
 
-        W = np.random.uniform(size = [r_dim,dim*dim])
+        W = np.random.uniform(size = [r_dim,dim,dim])
         x_r = np.random.uniform(size=[r_dim])
-
         np_score,np_cost = self.numpy_s_bilinear_model(X_s,X_t,x_r,W)
-        gi_model = get_model("group interaction")
-        score = gi_model['score']
-        fprop = gi_model['fprop']
+        #print(np_score)
+        s_rescal = get_model("s-rescal")
+        score = s_rescal['score']
+        fprop = s_rescal['fprop']
         X_s = np.asarray(X_s)
-        X_t = np.asarray(X_t)
-
-        self.assertAlmostEqual(np.linalg.norm(score(X_s,X_t,W,x_r)-np_score),0.0,delta=0.0001)
-        self.assertAlmostEqual(fprop(X_s,X_t,W,x_r), np_cost, delta=0.0001)
+        X_t = np.transpose(X_t)
+        #print score(X_s,X_t,x_r,W)
+        self.assertAlmostEqual(np.linalg.norm(score(X_s,X_t,x_r,W)-np_score),0.0,delta=0.0001)
+        self.assertAlmostEqual(fprop(X_s,X_t,x_r,W), np_cost, delta=0.0001)
 
 
     def test_bilinear_model(self):
@@ -69,19 +69,51 @@ class TestModels(unittest.TestCase):
         X_t = []
         for i in range(num_negs):
             X_t.append(0.1*np.random.normal(size=[dim]))
+
         W = np.random.normal(size=[dim,dim])
-
-        np_score, np_fprop_1 = self.numpy_bilinear_model(X_s,X_t,W)
-
+        np_score, np_cost = self.numpy_bilinear_model(X_s,X_t,W)
         bilinear = get_model("bilinear")
         score = bilinear['score']
         fprop = bilinear['fprop']
-        X_s = np.asarray(X_s)
-        X_t = np.asarray(X_t)
-
+        X_s = np.reshape(X_s,(1,dim))
+        X_t = np.transpose(X_t)
         self.assertAlmostEqual(np.linalg.norm(score(X_s,X_t,W)-np_score),0.0,delta=0.0001)
+        self.assertAlmostEqual(fprop(X_s,X_t,W), np_cost, delta=0.0001)
 
-        self.assertAlmostEqual(fprop(X_s,X_t,W), np_fprop_1, delta=0.0001)
+
+
+    def numpy_transE(self,x_s,X_t,x_r):
+        scores = []
+        for t in X_t:
+            scores.append(-1.0*np.sum(np.square(x_s+x_r-t)))
+        cost = self.max_margin(scores)
+        return scores,cost
+
+    def test_transE(self):
+        dim = 10
+        num_negs = 8
+        X_s = 0.1 * np.random.normal(size=[dim])
+        X_t = []
+        for i in range(num_negs):
+            X_t.append(0.1*np.random.normal(size=[dim]))
+
+        x_r = np.random.uniform(size=[dim])
+        np_score, np_cost = self.numpy_transE(X_s, X_t, x_r)
+        X_t = np.asarray(X_t)
+        transE = get_model('transE')
+        score = transE['score']
+        fprop = transE['fprop']
+        self.assertAlmostEqual(np.linalg.norm(score(X_s, X_t, x_r) - np_score), 0.0, delta=0.0001)
+        self.assertAlmostEqual(fprop(X_s, X_t, x_r), np_cost, delta=0.0001)
+
+    '''
+    Test Layers
+    '''
+    def test_max_margin(self):
+        scores = np.random.randn(10)
+        from theano_models import test_max_margin
+        f = test_max_margin()
+        self.assertAlmostEqual(self.max_margin(scores),f(scores),delta=0.0001)
 
 
     def test_coupling(self):

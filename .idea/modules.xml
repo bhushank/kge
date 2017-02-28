@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/kg_latent_factor_models.iml" filepath="$PROJECT_DIR$/.idea/kg_latent_factor_models.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/kge-master.iml" filepath="$PROJECT_DIR$/.idea/kge-master.iml" />
     </modules>
   </component>
 </project>

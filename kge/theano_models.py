@@ -2,23 +2,23 @@ __author__ = 'Bhushan Kotnis'
 
 import theano.tensor as T
 import theano
+import util
+import constants
 
 @util.memoize
 def get_model(model):
-    if model=="bilinear":
+    if model==constants.bilinear:
         return bilinear()
     elif model=="coupled bilinear":
         return coupled_bilinear()
-    elif model=='s-rescal':
+    elif model==constants.s_rescal:
         return s_rescal()
-    elif model == 'er-mlp':
-        return ermlp()
-    elif model == 'transE':
+    elif model == constants.transE:
         return transE()
+    elif model == constants.tr:
+        return type_regularizer()
     else:
-        raise NotImplementedError()
-
-
+        raise NotImplementedError("Model {} not implemented".format(model))
 
 
 def s_rescal():
@@ -28,8 +28,9 @@ def s_rescal():
     W  = T.tensor3('W')
     x_r = T.vector('r')
 
-    scores = T.nnet.sigmoid(x_r.dot(X_s.T.dot(W).dot(X_t)))
-    cost = max_margin(scores)
+    scores = x_r.dot(X_s.T.dot(W).dot(X_t))
+    scores = T.reshape(scores, (1, -1))
+    cost = max_margin(scores[0])
     gx_s, gx_t, gx_r, gW = T.grad(cost,wrt=[X_s,X_t,x_r,W])
 
     print('Compiling s-rescal fprop')
@@ -41,7 +42,7 @@ def s_rescal():
     bprop.trust_input = True
 
     print('Compiling s-rescal score')
-    score = theano.function([X_s,X_t,x_r,W],scores, name = 'score',mode='FAST_RUN')
+    score = theano.function([X_s,X_t,x_r,W],scores[0], name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop':fprop,'bprop':bprop,'score':score}
@@ -52,14 +53,13 @@ def bilinear():
     Defines the Bilinear (RESCAL) model in theano
     :return: fprop, bprop, score
     '''
-
     X_s = T.matrix('X_s')
     X_t = T.matrix('X_t')
     W_r = T.matrix('W_r')
 
-    #results,updates = theano.scan(lambda u,v:T.dot(u.T,T.dot(W_r,v)),sequences=[X_s,X_t],outputs_info=None)
-    scores = T.nnet.sigmoid(T.dot(X_s, T.dot(W_r, X_t)))
-    cost = max_margin(scores)
+    scores = T.dot(X_s, T.dot(W_r, X_t))
+    scores = T.reshape(scores,(1,-1))
+    cost = max_margin(scores[0])
     gx_s, gx_t, gW_r = T.grad(cost,wrt=[X_s,X_t,W_r])
 
     print('Compiling bilinear fprop')
@@ -71,7 +71,7 @@ def bilinear():
     bprop.trust_input = True
 
     print('Compiling bilinear score')
-    score = theano.function([X_s,X_t,W_r],scores, name = 'score',mode='FAST_RUN')
+    score = theano.function([X_s,X_t,W_r],scores[0], name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop':fprop,'bprop':bprop,'score':score}
@@ -83,77 +83,79 @@ def transE():
     X_t = T.matrix('x_t')
     x_r = T.vector('r')
 
-
     def calc_score(x_s,v,x_r):
-        return T.sum(x_s + x_r - v)**2
+        return -1.0*T.sum(T.square(x_s + x_r - v))
 
     results, updates = theano.scan(lambda v: calc_score(x_s, v, x_r), sequences=[X_t], outputs_info=None)
-    scores =  T.nnet.sigmoid(-1.0*results)
-    cost = max_margin(scores)
+
+    cost = max_margin(results)
     gx_s, gx_t, gx_r = T.grad(cost, wrt=[x_s, X_t, x_r])
 
-    print('Compiling trans-e fprop')
+    print('Compiling transE fprop')
     fprop = theano.function([x_s, X_t, x_r], cost, name='fprop', mode='FAST_RUN')
     fprop.trust_imput = True
 
-    print('Compiling trans-e bprop')
+    print('Compiling transE bprop')
     bprop = theano.function([x_s, X_t, x_r], [gx_s, gx_t, gx_r], name='bprop', mode='FAST_RUN')
     bprop.trust_input = True
 
-    print('Compiling trans-e Score')
-    score = theano.function([x_s, X_t, x_r], scores, name='score', mode='FAST_RUN')
+    print('Compiling transE score')
+    score = theano.function([x_s, X_t, x_r], results, name='score', mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop': fprop, 'bprop': bprop, 'score': score}
 
 
-def ermlp():
-    X_s = T.matrix('x_s')
-    X_t = T.matrix('x_t')
-    x_r = T.vector('r')
-    C = T.matrix('C')
-    w = T.matrix('w')
-    y = T.matrix('y')
 
-    def calc_score(u,v,x_r,C,w):
-        x = T.concatenate([u,v,x_r])
-        return T.nnet.sigmoid(T.dot(w,T.dot(C,x)))
 
-    results, updates = theano.scan(lambda u, v: calc_score(u, v, x_r,C,w), sequences=[X_s, X_t], outputs_info=None)
-    scores = T.nnet.softmax(results)
-    cost = softmax_cost(scores,y)
-    #score,cost = max_margin(results)
+def type_regularizer():
+    x_s = T.matrix('X_s')
+    x_t = T.matrix('X_t')
+    W_r = T.matrix('W_r')
+    W_c = T.matrix('W_c')
+    pos_cats = T.matrix('pos')
+    neg_cats = T.matrix('neg')
+    attn,pos = soft_attention(x_s,x_t,W_r,W_c,pos_cats)
+    # Max Margin loss
+    neg = T.nnet.sigmoid(T.dot(x_t, T.dot(W_c, neg_cats)))
+    margin = 1.0 - T.nnet.sigmoid(pos) + neg
+    pos_margin = T.maximum(T.zeros_like(margin), margin)
+    cost = T.sum(pos_margin)
+    # Gradient
+    gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[x_s, x_t, W_r, W_c,pos_cats,neg_cats])
 
-    gx_s, gx_t, gx_r,g_C,g_w = T.grad(cost, wrt=[X_s, X_t, x_r,C,w],consider_constant=[y])
-
-    print('Compiling er-mlp fprop')
-    fprop = theano.function([X_s, X_t, x_r, C, w], cost, name='fprop', mode='FAST_RUN')
+    print('Compiling soft type_regularizer fprop')
+    fprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats], cost, name='fprop', mode='FAST_RUN')
     fprop.trust_imput = True
 
-    print('Compiling er-mlp bprop')
-    bprop = theano.function([X_s, X_t, x_r, C, w], [gx_s, gx_t, gx_r, g_C, g_w], name='bprop', mode='FAST_RUN')
+    print('Compiling soft type_regularizer soft bprop')
+    bprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats],
+                            [gx_s, gx_t, gx_r, gx_c, g_pos, g_neg], name='bprop', mode='FAST_RUN')
     bprop.trust_input = True
 
-    print('Compiling er-mlp score')
-    score = theano.function([X_s, X_t, x_r, C, w,y], scores, name='score', mode='FAST_RUN')
-    score.trust_input = True
+    print('Compiling soft type_regularizer attention')
+    attn = theano.function([x_s,x_t,W_r,W_c,pos_cats], attn, name='attention', mode='FAST_RUN')
+    attn.trust_input = True
 
-    return {'fprop': fprop, 'bprop': bprop, 'score': score}
-
+    return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
 
 def max_margin(scores):
-    margin = 1.0 - scores[0] + scores[1:]
+    s = T.nnet.sigmoid(scores)
+    margin = 1.0 - s[0] + s[1:]
     pos_margin = T.maximum(T.zeros_like(margin),margin)
     cost = T.sum(pos_margin)
-    #negatives = results[1:]
-    #cost = (T.maximum(T.zeros_like(negatives), margin -(results[0] + negatives) ))
     return cost
 
 def softmax_loss(score,y):
-
-    # Outer product is a column vector
     cost = T.nnet.categorical_crossentropy(score, y)[0]
     return cost
+
+
+def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
+    # attention vector for slecting categories
+    a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
+    score = x_t.T.dot(W_c).dot(pos_cats).dot(a)
+    return a,score
 
 def coupling_layer(X_s,X_t,W_p):
     '''
@@ -252,3 +254,9 @@ def test_ordistic():
     fprop.trust_imput = True
     return fprop
 
+def test_max_margin():
+    scores = T.vector()
+    cost = max_margin(scores)
+    fprop = theano.function([scores], cost, name='fprop', mode='FAST_RUN')
+    fprop.trust_imput = True
+    return fprop

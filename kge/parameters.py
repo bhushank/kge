@@ -7,6 +7,7 @@ import copy
 class SparseParams(MutableMapping):
     '''
     Contains dict, rather than inheriting from a dict. This allows for multiple views of same underlying dict.
+    Also allows on to pickle the dict which can then be analysed later.
     '''
 
     def __init__(self,d=None):

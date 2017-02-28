@@ -5,31 +5,32 @@ import util
 import cPickle as pickle
 import os
 import time
+import constants
 
 class GradientDescent(object):
-    def __init__(self,train,dev,updater,objective,evaluater,results_dir,model_type,config,init_params=None):
+    def __init__(self,train,dev,updater,model,evaluater,results_dir,model_type,config,init_params=None):
 
         self.train = train
         self.dev = dev
-        self.batch_size = config['batch_size']
-        self.l2_reg = config['l2_reg']
+        self.batch_size = config.get('batch_size',constants.batch_size)
+        self.l2_reg = config.get('l2',util.to_floatX(0.0))
 
         if not init_params:
             init_params = SparseParams(d=dict())
 
         #param which is not available will be initialized
-        self.params = Initialized(init_params,objective.init_f)
+        self.params = Initialized(init_params,model.init_f)
 
         self.results_dir = results_dir
         self.model_type = model_type # Single or Coupled
         # updater, cost, evaluator functions
-        self.objective = objective
+        self.model = model
         self.updater = updater # updates at each iteration
         self.evaluater = evaluater # evaluates F-Score or Mean Average Precision or Rank
         # For reporting and saving params
-        self.report_steps = 100#config['report_steps']
-        self.save_steps = 1000#config['save_steps']
-        self.dev_samples = config['num_dev_samples'] # number of dev samples
+        self.report_steps = constants.report_steps
+        self.save_steps = constants.save_steps
+        self.dev_samples = config.get('num_dev_samples',constants.num_dev_samples) # number of dev samples
         # History
         self.history = {}
         self.grad_norm_history = []
@@ -40,8 +41,8 @@ class GradientDescent(object):
         #Early stopping
         self.halt = False
         self.prev_score = evaluater.init_score
-        self.early_stop_counter = config['early_stop']
-        self.early_stop = config['early_stop']
+        self.early_stop_counter = config.get('early_stop',constants.early_stop_counter)
+        self.early_stop = self.early_stop_counter
         self.max_steps = config['max_steps']
 
     def l2reg_grad(self,grad):
@@ -91,7 +92,7 @@ class GradientDescent(object):
             for batch in batches:
                 grad = SparseParams(d=dict())
                 for p in batch:
-                    grad_p = self.objective.gradient(self.params,p)
+                    grad_p = self.model.gradient(self.params,p)
                     if grad_p.size() > 0:
                         grad += grad_p
 
@@ -119,24 +120,19 @@ class GradientDescent(object):
                 if self.halt:
                     return
 
-    def calc_obj(self,data, f,sample=True,is_rank = False, num_samples=-1):
+    def calc_obj(self,data, f,sample=True):
         if sample:
             samples = util.sample(data, self.dev_samples)
         else:
             samples = data
-        if is_rank:
-            values = [f(self.params, x,num_samples) for x in samples]
-        else:
-            values = [f(self.params,x) for x in samples]
+
+        values = [f(self.params, x) for x in samples]
         return np.nanmean(values)
-
-
-
 
 
     def save(self):
         if self.steps % self.save_steps == 0:
-            curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,False,True,200)
+            curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,True)
             epochs = float(self.steps * self.batch_size) / len(self.train)
             print 'steps: {}, epochs: {:.2f}'.format(self.steps, epochs)
             print("Current Score: {}, Previous Score: {}".format(curr_score,self.prev_score))
@@ -176,8 +172,8 @@ class GradientDescent(object):
             self.prev_time = time.time()
             speed_rep = "Speed: {:.2f} steps/sec".format(speed)
             # Objective
-            train_obj = self.calc_obj(self.train,self.objective.cost)
-            dev_obj = self.calc_obj(self.train,self.objective.cost)
+            train_obj = self.calc_obj(self.train,self.model.cost)
+            dev_obj = self.calc_obj(self.train,self.model.cost)
             obj_rep = "Train Obj: {:.3f}, Dev Obj: {:.3f}".format(train_obj,dev_obj)
             # Add to history
             self.history[time.time()] = (train_obj,dev_obj)

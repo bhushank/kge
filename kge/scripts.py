@@ -13,26 +13,44 @@ import numpy as np
 def sigmoid(x):
     return np.exp(x) / (1.0 + np.exp(x))
 
+
 X_s = []
 X_t = []
 dim = 6
 x_s = np.random.randn(dim)
-#W = np.random.randn(dim,dim,dim)
 x_r = np.random.randn(dim)
 for i in range(3):
     X_t.append(np.random.randn(dim))
 
-
 X_t = np.asarray(X_t)
 
-from models import transE
+from theano_models import transE
 f = transE()
-s = f(x_s,X_t,x_r)
+s = f['score'](x_s,X_t,x_r)
+print(s)
+
+
+
+'''
+X_s = []
+X_t = []
+dim = 6
+x_s = np.random.randn(dim,1)
+W = np.random.randn(dim,dim,dim)
+x_r = np.random.randn(dim)
+for i in range(3):
+    X_t.append(np.random.randn(dim))
+
+X_t = np.transpose(np.asarray(X_t))
+
+from theano_models import s_rescal
+f = s_rescal()
+s = f['score'](x_s,X_t,x_r,W)
 #s = f(X_s.T,X_t.T,W,x_r)
 print(s)
 print(s.shape)
 
-'''
+
 score = models.get_model('er-mlp')
 dim = 3
 X_s = []
