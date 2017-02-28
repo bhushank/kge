@@ -35,3 +35,4 @@ pos_position = 0
 
 '''Universal Category'''
 universal_cat = 'object'
+cat_rel = 'has_category'

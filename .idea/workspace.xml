@@ -2,19 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b35cb61a-c55a-4dd6-839b-6b03ab4742fa" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="$PROJECT_DIR$/.idea/modules.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/algorithms.py" afterPath="$PROJECT_DIR$/kge/algorithms.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/constants.py" afterPath="$PROJECT_DIR$/kge/constants.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/data.py" afterPath="$PROJECT_DIR$/kge/data.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/experiment_runner.py" afterPath="$PROJECT_DIR$/kge/experiment_runner.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/models.py" afterPath="$PROJECT_DIR$/kge/models.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/optimizer.py" afterPath="$PROJECT_DIR$/kge/optimizer.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/parameters.py" afterPath="$PROJECT_DIR$/kge/parameters.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/scripts.py" afterPath="$PROJECT_DIR$/kge/scripts.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/theano_models.py" afterPath="$PROJECT_DIR$/kge/theano_models.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/util.py" afterPath="$PROJECT_DIR$/kge/util.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/models.py" afterPath="$PROJECT_DIR$/test/models.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -59,8 +49,8 @@
       <file leaf-file-name="models.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/kge/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="710">
-              <caret line="392" column="4" lean-forward="false" selection-start-line="392" selection-start-column="4" selection-end-line="392" selection-end-column="4" />
+            <state relative-caret-position="526">
+              <caret line="426" column="25" lean-forward="false" selection-start-line="426" selection-start-column="25" selection-end-line="426" selection-end-column="25" />
               <folding>
                 <element signature="e#31#66#0" expanded="true" />
               </folding>
@@ -72,7 +62,7 @@
         <entry file="file://$PROJECT_DIR$/kge/optimizer.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="0">
-              <caret line="0" column="29" lean-forward="true" selection-start-line="0" selection-start-column="29" selection-end-line="0" selection-end-column="29" />
+              <caret line="0" column="29" lean-forward="false" selection-start-line="0" selection-start-column="29" selection-end-line="0" selection-end-column="29" />
               <folding>
                 <element signature="e#30#77#0" expanded="true" />
               </folding>
@@ -95,8 +85,8 @@
       <file leaf-file-name="constants.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/constants.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="540">
-              <caret line="36" column="23" lean-forward="false" selection-start-line="36" selection-start-column="23" selection-end-line="36" selection-end-column="23" />
+            <state relative-caret-position="555">
+              <caret line="37" column="23" lean-forward="false" selection-start-line="37" selection-start-column="23" selection-end-line="37" selection-end-column="23" />
               <folding />
             </state>
           </provider>
@@ -117,8 +107,8 @@
       <file leaf-file-name="theano_models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/theano_models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="17" column="31" lean-forward="false" selection-start-line="17" selection-start-column="31" selection-end-line="17" selection-end-column="31" />
+            <state relative-caret-position="215">
+              <caret line="124" column="40" lean-forward="true" selection-start-line="124" selection-start-column="4" selection-end-line="124" selection-end-column="40" />
               <folding>
                 <element signature="e#31#56#0" expanded="true" />
               </folding>
@@ -549,7 +539,7 @@
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="1280" y="0" width="1680" height="1028" extended-state="6" />
+    <frame x="1280" y="0" width="1680" height="1028" extended-state="7" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.13988096" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -920,7 +910,7 @@
     <entry file="file://$PROJECT_DIR$/kge/optimizer.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
-          <caret line="0" column="29" lean-forward="true" selection-start-line="0" selection-start-column="29" selection-end-line="0" selection-end-column="29" />
+          <caret line="0" column="29" lean-forward="false" selection-start-line="0" selection-start-column="29" selection-end-line="0" selection-end-column="29" />
           <folding>
             <element signature="e#30#77#0" expanded="true" />
           </folding>
@@ -932,7 +922,7 @@
         <state relative-caret-position="210">
           <caret line="14" column="24" lean-forward="false" selection-start-line="14" selection-start-column="24" selection-end-line="14" selection-end-column="24" />
           <folding>
-            <element signature="e#31#46#0" expanded="true" />
+            <element signature="e#31#46#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -957,28 +947,28 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/kge/constants.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="555">
+          <caret line="37" column="23" lean-forward="false" selection-start-line="37" selection-start-column="23" selection-end-line="37" selection-end-column="23" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/kge/theano_models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="17" column="31" lean-forward="false" selection-start-line="17" selection-start-column="31" selection-end-line="17" selection-end-column="31" />
+        <state relative-caret-position="215">
+          <caret line="124" column="40" lean-forward="true" selection-start-line="124" selection-start-column="4" selection-end-line="124" selection-end-column="40" />
           <folding>
             <element signature="e#31#56#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kge/constants.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="540">
-          <caret line="36" column="23" lean-forward="false" selection-start-line="36" selection-start-column="23" selection-end-line="36" selection-end-column="23" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/kge/models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="710">
-          <caret line="392" column="4" lean-forward="false" selection-start-line="392" selection-start-column="4" selection-end-line="392" selection-end-column="4" />
+        <state relative-caret-position="526">
+          <caret line="426" column="25" lean-forward="false" selection-start-line="426" selection-start-column="25" selection-end-line="426" selection-end-column="25" />
           <folding>
             <element signature="e#31#66#0" expanded="true" />
           </folding>

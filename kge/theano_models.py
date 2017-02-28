@@ -139,6 +139,12 @@ def type_regularizer():
 
     return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
 
+def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
+    # attention vector for slecting categories
+    a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
+    score = x_t.T.dot(W_c).dot(pos_cats).dot(a)
+    return a,score
+
 def max_margin(scores):
     s = T.nnet.sigmoid(scores)
     margin = 1.0 - s[0] + s[1:]
@@ -151,11 +157,7 @@ def softmax_loss(score,y):
     return cost
 
 
-def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
-    # attention vector for slecting categories
-    a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
-    score = x_t.T.dot(W_c).dot(pos_cats).dot(a)
-    return a,score
+
 
 def coupling_layer(X_s,X_t,W_p):
     '''

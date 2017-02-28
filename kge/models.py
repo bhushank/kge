@@ -7,7 +7,7 @@ import util
 from theano_models import get_model as get_theano_model
 import cPickle as pickle
 import constants
-import copy
+
 
 def get_model(config, neg_sampler):
     model = config['model']
@@ -370,12 +370,17 @@ class TransE(Model):
         return list(),list()
 
 
-class TypeRegularizer(Model):
+class TypeRegularizer(Bilinear):
     def __init__(self,config,neg_sampler):
+        config['model'] = constants.bilinear
         super(TypeRegularizer, self).__init__(config, neg_sampler)
         self.cats = self.load_categories(config['category path'])
         self.num_cat_negs = config.get('num_dev_negs',constants.num_dev_negs)
         self.all_cats = self.get_all_cats()
+
+        type_reg = get_theano_model(constants.tr)
+        self.tr_fprop = type_reg['fprop']
+        self.tr_bprop = type_reg['bprop']
 
     def load_categories(self,cat_path):
         print("Loading categories from {}".format(cat_path))
@@ -398,7 +403,80 @@ class TypeRegularizer(Model):
 
     def sample_neg_cats(self,id):
         pos_cats = self.cats_for_id(id)
-        pos_cats = copy.copy(pos_cats)
+        candidates = list(self.all_cats.difference(pos_cats))
+        samples = set(candidates[np.random.choice(range(len(candidates)),size=self.neg_samples,replace=False)])
+        intersect = samples.intersection(pos_cats)
+        assert len(intersect) == 0
+        return list(samples)
+
+    def unpack_categories(self,entity,params):
+        pos_cats = list(self.cats_for_id(entity))
+        neg_cats = self.sample_neg_cats(entity)
+        pos_v_cats = self.unpack_entities(params,pos_cats)
+        neg_v_cats = self.unpack_entities(params, neg_cats)
+        return (pos_v_cats,pos_cats),(neg_v_cats,neg_cats)
+
+    def cost(self,params,ex):
+        cost = 0.0
+        x_s, x_t, W_r = self.unpack_triple(params, ex)
+        X_t_batch,t_negs = self.get_neg_batch(params,ex,x_t,True)
+        if len(t_negs)>0:
+            x_s = np.transpose(x_s)
+            cost += self.fprop(x_s, X_t_batch, W_r)
+            pos_cats,neg_cats = self.unpack_categories(ex.t,params)
+            if pos_cats[0].shape[0] > 1:
+                W_c = self.unpack_relations(params,(constants.cat_rel,))
+                cost += self.tr_fprop(x_s, x_t, W_r, W_c,pos_cats[0],neg_cats[0])
+        return cost
+
+    def gradient(self,params,ex):
+        grad = SparseParams(d=dict())
+        # back prop for target negatives
+        grad = self.bprop_model(grad, params, ex, True)
+        # back prop for source negatives
+        grad = self.bprop_model(grad, params, ex, False)
+        # Add type regularized gradient
+        grad = self.tr_bprop_model(grad,params,ex,True)
+        grad = self.tr_bprop_model(grad, params, ex, False)
+        return grad
+
+    def tr_bprop_model(self,grad,params,ex,is_target):
+        x_s, x_t, W_r = self.unpack_triple(params, ex)
+        if is_target:
+            source = x_s
+            target = x_t
+            s_name = ex.s
+            t_name = ex.t
+            W_r = W_r
+            entity = ex.t
+        else:
+            source = x_t
+            target = x_s
+            s_name = ex.t
+            t_name = ex.s
+            W_r = np.transpose(W_r)
+            entity = ex.s
+
+        pos_cats, neg_cats = self.unpack_categories(entity, params)
+        # number of categories will at least 1 (every entity is an object).
+        # More than one required for attention (hard or soft)
+        if pos_cats[0].shape[0] > 1:
+            W_c = self.unpack_relations(params, (constants.cat_rel,))
+            gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = self.tr_bprop(source, target, W_r, W_c,pos_cats[0],neg_cats[0])
+
+            grad = self.collect_entity_grads(grad,s_name,gx_s,self.enforce_shape)
+            grad = self.collect_entity_grads(grad, t_name, gx_t, self.enforce_shape)
+            # W_r transpose if source
+            if is_target:
+                grad = self.collect_rel_grads(grad, ex.r, gx_r)
+            else:
+                grad = self.collect_rel_grads(grad, ex.r, np.transpose(gx_r))
+
+            grad = self.collect_rel_grads(grad, (constants.cat_rel,), gx_c)
+            grad = self.collect_batch_entity_grads(grad, pos_cats[1], g_pos,self.enforce_shape)
+            grad = self.collect_batch_entity_grads(grad, neg_cats[1], g_neg, self.enforce_shape)
+
+            return grad
 
 class CoupledRescal(Model):
     def __init__(self,config,neg_sampler):
