@@ -46,7 +46,7 @@ def train(config,exp_name,data_path):
     #ToDo:if model is coupled, then first learn single model
 
     # Set up functions and params
-    neg_sampler = data.NegativeSampler(data_set['train'],typed=True)
+    neg_sampler = data.NegativeSampler(data_set['train'],typed=False)
     model = models.get_model(config,neg_sampler)
     evaluater = algorithms.RankEvaluater(model,neg_sampler,
                                          config.get('num_dev_negs',constants.num_dev_negs))
@@ -81,7 +81,7 @@ def test(config,exp_name,data_path):
     all_data = copy.copy(data_set['train'])
     #ToDo:Does not contain dev
     all_data.extend(data_set['test'])
-    neg_sampler = data.NegativeSampler(all_data,typed=True)
+    neg_sampler = data.NegativeSampler(all_data,typed=False)
     model = models.get_model(config, neg_sampler)
     params = data.load_params(params_path, model)
     evaluate(data_set['test'],params,model,neg_sampler,results_dir,

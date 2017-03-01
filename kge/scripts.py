@@ -14,21 +14,24 @@ def sigmoid(x):
     return np.exp(x) / (1.0 + np.exp(x))
 
 
-X_s = []
-X_t = []
+
 dim = 6
-x_s = np.random.randn(dim)
-x_r = np.random.randn(dim)
-for i in range(3):
-    X_t.append(np.random.randn(dim))
+num_cats = 5
+x_s = np.random.randn(dim,1)
+x_t = np.random.randn(dim,1)
+W_r = np.random.randn(dim,dim)
+W_c = np.random.randn(dim,dim)
+pos_cats = np.random.randn(dim,num_cats)
+neg_cats = np.random.randn(dim,num_cats+4)
 
-X_t = np.asarray(X_t)
+from theano_models import test_attention, type_regularizer
+attn,pos = test_attention()
+print(attn(x_s, W_r, W_c, pos_cats))
+print(pos(x_s, x_t, W_r, W_c, pos_cats))
 
-from theano_models import transE
-f = transE()
-s = f['score'](x_s,X_t,x_r)
-print(s)
-
+f = type_regularizer()
+cost = f['fprop']
+print(cost(x_s, x_t, W_r, W_c, pos_cats,neg_cats))
 
 
 '''

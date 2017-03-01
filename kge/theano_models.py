@@ -109,32 +109,33 @@ def transE():
 
 
 def type_regularizer():
-    x_s = T.matrix('X_s')
-    x_t = T.matrix('X_t')
-    W_r = T.matrix('W_r')
-    W_c = T.matrix('W_c')
+    x_s = T.matrix('x_s')
+    x_t = T.matrix('x_t')
+    W_r = T.matrix('w_r')
+    W_c = T.matrix('w_c')
+    alpha = T.scalar('alpha')
     pos_cats = T.matrix('pos')
     neg_cats = T.matrix('neg')
     attn,pos = soft_attention(x_s,x_t,W_r,W_c,pos_cats)
     # Max Margin loss
-    neg = T.nnet.sigmoid(T.dot(x_t, T.dot(W_c, neg_cats)))
+    neg = T.nnet.sigmoid(T.dot(T.dot(W_c, neg_cats).T,x_t))
     margin = 1.0 - T.nnet.sigmoid(pos) + neg
     pos_margin = T.maximum(T.zeros_like(margin), margin)
-    cost = T.sum(pos_margin)
+    cost = alpha*T.sum(pos_margin)
     # Gradient
-    gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[x_s, x_t, W_r, W_c,pos_cats,neg_cats])
+    gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[x_s, x_t, W_r, W_c,pos_cats,neg_cats],consider_constant=[alpha])
 
     print('Compiling soft type_regularizer fprop')
-    fprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats], cost, name='fprop', mode='FAST_RUN')
+    fprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats,alpha], cost, name='fprop', mode='FAST_RUN')
     fprop.trust_imput = True
 
     print('Compiling soft type_regularizer soft bprop')
-    bprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats],
+    bprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats,alpha],
                             [gx_s, gx_t, gx_r, gx_c, g_pos, g_neg], name='bprop', mode='FAST_RUN')
     bprop.trust_input = True
 
     print('Compiling soft type_regularizer attention')
-    attn = theano.function([x_s,x_t,W_r,W_c,pos_cats], attn, name='attention', mode='FAST_RUN')
+    attn = theano.function([x_s,W_r,W_c,pos_cats], attn, name='attention', mode='FAST_RUN')
     attn.trust_input = True
 
     return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
@@ -142,8 +143,8 @@ def type_regularizer():
 def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
     # attention vector for slecting categories
     a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
-    score = x_t.T.dot(W_c).dot(pos_cats).dot(a)
-    return a,score
+    score = x_t.T.dot(W_c).dot(pos_cats).dot(a[0].T)
+    return a[0],score
 
 def max_margin(scores):
     s = T.nnet.sigmoid(scores)
@@ -155,7 +156,6 @@ def max_margin(scores):
 def softmax_loss(score,y):
     cost = T.nnet.categorical_crossentropy(score, y)[0]
     return cost
-
 
 
 
@@ -225,6 +225,19 @@ def coupled_bilinear():
 '''
 Tests for layers
 '''
+
+def test_attention():
+    x_s = T.matrix('X_s')
+    x_t = T.matrix('X_t')
+    W_r = T.matrix('W_r')
+    W_c = T.matrix('W_c')
+    pos_cats = T.matrix('pos')
+    attn, pos = soft_attention(x_s, x_t, W_r, W_c, pos_cats)
+    attn = theano.function([x_s, W_r, W_c, pos_cats], attn, name='attention', mode='FAST_RUN')
+    attn.trust_input = True
+    pos = theano.function([x_s, x_t, W_r, W_c, pos_cats], pos, name='pos', mode='FAST_RUN')
+    pos.trust_input = True
+    return attn,pos
 
 def test_coupling():
     X_s = T.matrix('x_s')

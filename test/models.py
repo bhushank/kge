@@ -15,14 +15,18 @@ class TestModels(unittest.TestCase):
     def sigmoid(self,x):
         return np.exp(x)/( 1.0 + np.exp(x))
 
+    def softmax(self,x):
+        num = np.exp(x)
+        return num/np.sum(num)
+
     def max_margin(self,scores):
-        margin = np.maximum(0,1-scores[0] + scores[1:])
+        margin = np.maximum(0,1-self.sigmoid(scores[0]) + seltf.sigmoid(scores[1:]))
         return np.sum(margin)
 
     def numpy_bilinear_model(self,x_s,x_t,W):
         scores = []
         for v in x_t:
-            scores.append(self.sigmoid(np.dot(np.dot(W,v),np.transpose(x_s))))
+            scores.append(np.dot(np.dot(W,v),np.transpose(x_s)))
         scores = np.asarray(scores)
         cost = self.max_margin(scores)
         return scores,cost
@@ -34,7 +38,7 @@ class TestModels(unittest.TestCase):
             z = np.zeros(x_r.shape[0])
             for i in range(x_r.shape[0]):
                 z[i] = np.sum(np.sum(W[i]*outer,axis=0))
-            scores.append(self.sigmoid(np.dot(z,x_r)))
+            scores.append(np.dot(z,x_r))
         cost = self.max_margin(scores)
         return scores,cost
 
@@ -81,7 +85,6 @@ class TestModels(unittest.TestCase):
         self.assertAlmostEqual(fprop(X_s,X_t,W), np_cost, delta=0.0001)
 
 
-
     def numpy_transE(self,x_s,X_t,x_r):
         scores = []
         for t in X_t:
@@ -106,9 +109,54 @@ class TestModels(unittest.TestCase):
         self.assertAlmostEqual(np.linalg.norm(score(X_s, X_t, x_r) - np_score), 0.0, delta=0.0001)
         self.assertAlmostEqual(fprop(X_s, X_t, x_r), np_cost, delta=0.0001)
 
+
+    def np_tr(self,x_s, x_t,W_r, W_c, pos_cats,neg_cats,alpha):
+        np_attn, np_pos = self.np_attention(x_s, x_t, W_r, W_c, pos_cats)
+        neg = self.sigmoid(np.dot(np.dot(W_c,neg_cats).T,x_t))
+        margin = 1.0 - self.sigmoid(np_pos) + neg
+        pos_margin = np.maximum(np.zeros_like(margin), margin)
+        cost = alpha*np.sum(pos_margin)
+        return cost
+
+    def test_tr(self):
+        dim = 6
+        num_cats = 5
+        x_s = np.random.randn(dim, 1)
+        x_t = np.random.randn(dim, 1)
+        W_r = np.random.randn(dim, dim)
+        W_c = np.random.randn(dim, dim)
+        pos_cats = np.random.randn(dim, num_cats)
+        neg_cats = np.random.randn(dim, num_cats)
+        alpha = np.random.randn()
+        np_cost = self.np_tr(x_s, x_t,W_r, W_c, pos_cats,neg_cats,alpha)
+        tr = get_model('tr')
+        cost = tr['fprop'](x_s, x_t,W_r, W_c, pos_cats,neg_cats,alpha)
+        self.assertAlmostEqual(cost, np_cost, delta=0.0001)
+
     '''
     Test Layers
     '''
+    def np_attention(self,x_s, x_t,W_r, W_c, pos_cats):
+        a = self.softmax(np.dot(x_s.T,np.dot(np.dot(W_r,W_c),pos_cats)))
+        score = np.dot(x_t.T,np.dot(W_c,np.dot(a[0],pos_cats.T)))
+        return a, score
+
+    def test_soft_attention(self):
+        dim = 6
+        num_cats = 5
+        x_s = np.random.randn(dim, 1)
+        x_t = np.random.randn(dim, 1)
+        W_r = np.random.randn(dim, dim)
+        W_c = np.random.randn(dim, dim)
+        pos_cats = np.random.randn(dim, num_cats)
+        from theano_models import test_attention
+        attn, pos = test_attention()
+        np_attn,np_pos = self.np_attention(x_s, x_t,W_r, W_c, pos_cats)
+        attn = attn(x_s, W_r, W_c, pos_cats)
+        pos = pos(x_s, x_t,W_r, W_c, pos_cats)
+        self.assertAlmostEqual((pos - np_pos), 0.0, delta=0.0001)
+        self.assertAlmostEqual(np.linalg.norm(attn-np_attn),0.0, delta=0.0001)
+
     def test_max_margin(self):
         scores = np.random.randn(10)
         from theano_models import test_max_margin
