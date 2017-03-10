@@ -15,6 +15,24 @@ def sigmoid(x):
 
 
 
+
+
+dim = 6
+x_s = np.random.randn(2,dim,1)
+W = np.random.randn(dim,dim,dim)
+x_r = np.random.randn(2,dim)
+X_t = np.random.randn(2,dim,3)
+
+from theano_models import s_rescal
+f = s_rescal()
+s = f['score'](x_s,X_t,x_r,W)
+#s = f(X_s.T,X_t.T,W,x_r)
+print(s)
+print(s.shape)
+
+
+'''
+
 dim = 6
 num_cats = 5
 x_s = np.random.randn(dim,1)
@@ -34,24 +52,8 @@ cost = f['fprop']
 print(cost(x_s, x_t, W_r, W_c, pos_cats,neg_cats))
 
 
-'''
-X_s = []
-X_t = []
-dim = 6
-x_s = np.random.randn(dim,1)
-W = np.random.randn(dim,dim,dim)
-x_r = np.random.randn(dim)
-for i in range(3):
-    X_t.append(np.random.randn(dim))
 
-X_t = np.transpose(np.asarray(X_t))
 
-from theano_models import s_rescal
-f = s_rescal()
-s = f['score'](x_s,X_t,x_r,W)
-#s = f(X_s.T,X_t.T,W,x_r)
-print(s)
-print(s.shape)
 
 
 score = models.get_model('er-mlp')
@@ -89,19 +91,8 @@ print(p_hit in paths)
 print(p_miss in paths)
 assert p_hit in paths and p_miss not in paths
 '''
-'''
-import json
-data = 'freebase'
-model  = 'transe'
-base = "/home/mitarb/kotnis/Data/grouped_bilinear/{}/experiment_specs/".format(data)
-exp_name = "{}_{}".format(data,model) + "{}.json"
-config = json.load(open(base + exp_name.format("")))
-l2_arr = [0.001,0.0001,0.01,0.1,0.00001]
-for l2 in l2_arr:
-    config['l2_reg'] = l2
-    json.dump(config,open(base+exp_name.format("_"+str(l2)),'w'))
 
-'''
+
 
 #w = util.get_correlation_tensor(3)
 #print(w)

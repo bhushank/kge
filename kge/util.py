@@ -104,3 +104,16 @@ def get_correlation_tensor(dim):
     for i in range(dim):
         W[i,:,i] = np.ones(dim,dtype=theano.config.floatX)
     return W
+
+def pad_zeros(arr,dim):
+
+    current_dim = arr.shape[1]
+    if current_dim > dim:
+        return arr[:,:dim]
+    pad = np.zeros((arr.shape[0],dim-current_dim),dtype=theano.config.floatX)
+    padded = np.concatenate([arr,pad],axis=1)
+    return padded
+
+def pad_empty(arr,dim):
+    if len(arr)==0:
+        return np.zeros((dim,1),dtype=theano.config.floatX)

@@ -84,17 +84,14 @@ class GradientDescent(object):
         self.steps = 0
         #rand = np.random.RandomState(2568)
         self.save()
+
         while True:
             train_cp = list(self.train)
             np.random.shuffle(train_cp)
             batches = util.chunk(train_cp, self.batch_size)
 
             for batch in batches:
-                grad = SparseParams(d=dict())
-                for p in batch:
-                    grad_p = self.model.gradient(self.params,p)
-                    if grad_p.size() > 0:
-                        grad += grad_p
+                grad = self.model.gradient(self.params,batch)
 
                 if self.l2_reg!=0:
                     grad += self.l2reg_grad(grad)
@@ -122,15 +119,16 @@ class GradientDescent(object):
 
     def calc_obj(self,data, f,sample=True):
         if sample:
-            samples = util.sample(data, self.dev_samples)
+            samples = util.chunk(util.sample(data, self.dev_samples),100)
         else:
-            samples = data
+            samples = util.chunk(data,100)
 
-        values = [f(self.params, x) for x in samples]
+        values = [f(self.params,np.asarray(s)) for s in samples]
         return np.nanmean(values)
 
 
     def save(self):
+        #if True:
         if self.steps % self.save_steps == 0:
             curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,True)
             epochs = float(self.steps * self.batch_size) / len(self.train)
@@ -159,7 +157,7 @@ class GradientDescent(object):
 
 
     def report(self,delta):
-
+        #if True:
         if self.steps % self.report_steps == 0:
             grad_norm = self.gnorm
             delta_norm = delta.norm2()

@@ -90,21 +90,18 @@ class RankEvaluater(Evaluater):
         # write if curr_score less than prev_score
         return curr_score < prev_score
 
-    def evaluate(self,params,ex):
-        pos = self.model.predict(params,ex)
-        negs = self.neg_sampler.sample(ex,self.num_samples,True)
-        if len(negs) < 1:
-            return np.nan
-        scores = []
-        for n in negs:
-            ex = Path(ex.s,ex.r,n)
-            scores.append(self.model.predict(params,ex))
-        scores.insert(constants.pos_position,pos)
-        scores = np.asarray(scores)
-        ranks = util.ranks(scores.flatten(),ascending=False)
-        if ranks is None:
-            return np.nan
-        return ranks[constants.pos_position]
+    def evaluate(self,params,batch):
+        pos_scores = self.model.predict(params,batch)
+        mean_rank = []
+        for p,ex in zip(pos_scores,batch):
+            negs = self.neg_sampler.sample(ex,self.num_samples,True)
+            neg_ex = [Path(ex.s,ex.r,n) for n in negs]
+            scores = self.model.predict(params,neg_ex)
+            scores = np.insert(scores,constants.pos_position,p)
+            scores = np.asarray(scores)
+            ranks = util.ranks(scores.flatten(), ascending=False)
+            mean_rank.append(ranks[constants.pos_position])
 
+        return np.nanmean(mean_rank)
 
 
