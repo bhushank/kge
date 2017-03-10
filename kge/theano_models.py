@@ -34,9 +34,8 @@ def s_rescal():
         return scores[0]
 
     def batch_cost(u, v, r):
-        scores = r.dot(u.T.dot(W).dot(v))
-        scores = T.reshape(scores, (1, -1))
-        return max_margin(scores[0])
+        scores = batch_scores(u,v,r)
+        return max_margin(scores)
 
     score_results, updates = theano.scan(lambda u, v, r: batch_scores(u, v, r), sequences=[X_s, X_t, x_r]
                                          ,outputs_info=None)
@@ -72,22 +71,24 @@ def bilinear():
     X_t = T.tensor3('X_t')
     W_r = T.tensor3('W_r')
 
+
+
     def batch_scores(x_s,x_t,w_r):
         scores = T.dot(x_s, T.dot(w_r, x_t))
         scores = T.reshape(scores,(1,-1))
         return scores[0]
     # score and cost are not called at the same time, so its not double computations.
     def batch_cost(x_s,x_t,w_r):
-        scores = T.dot(x_s, T.dot(w_r, x_t))
-        scores = T.reshape(scores, (1, -1))
-        cost = max_margin(scores[0])
+        scores = batch_scores(x_s,x_t,w_r)
+        cost = max_margin(scores)
         return cost
 
     score_results, updates = theano.scan(lambda u, v, w: batch_scores(u, v, w), sequences=[X_s, X_t, W_r], outputs_info=None)
 
     cost_results, updates = theano.scan(lambda u, v, w: batch_cost(u, v, w), sequences=[X_s, X_t, W_r],
-                                         outputs_info=None)
+                                        outputs_info=None)
     cost = T.sum(cost_results)
+
     gx_s, gx_t, gW_r = T.grad(cost,wrt=[X_s,X_t,W_r])
 
     print('Compiling bilinear fprop')
@@ -118,10 +119,8 @@ def transE():
         return results
 
     def batch_costs(u,x_t,r):
-        def calc_score(v):
-            return -1.0*T.sum(T.square(u + r - v))
-        results, updates = theano.scan(lambda v: calc_score(v), sequences=[x_t], outputs_info=None)
-        return max_margin(results)
+        scores = batch_scores(u,x_t,r)
+        return max_margin(scores)
 
     score_results, updates = theano.scan(lambda u, v, w: batch_scores(u, v, w), sequences=[x_s, X_t, x_r], outputs_info=None)
 
@@ -154,7 +153,6 @@ def type_regularizer():
     alpha = T.scalar('alpha')
     pos_cats = T.tensor3('pos')
     neg_cats = T.tensor3('neg')
-
 
 
     def batch_cost(x_s,x_t,w_r,p,n):

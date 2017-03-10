@@ -8,7 +8,7 @@ import util
 
 import models
 import numpy as np
-
+import theano
 
 def sigmoid(x):
     return np.exp(x) / (1.0 + np.exp(x))
@@ -16,19 +16,21 @@ def sigmoid(x):
 
 
 
+import time
 
-dim = 6
-x_s = np.random.randn(2,dim,1)
-W = np.random.randn(dim,dim,dim)
-x_r = np.random.randn(2,dim)
-X_t = np.random.randn(2,dim,3)
+dim = 200
+X_s = np.random.randn(300,1,dim)
+W_r = np.random.randn(300,dim,dim)
+X_t = np.random.randn(300,dim,50)
 
-from theano_models import s_rescal
-f = s_rescal()
-s = f['score'](x_s,X_t,x_r,W)
+theano.config.allow_gc = False
+from theano_models import bilinear
+f = bilinear()
+start = time.time()
+s = f['fprop'](X_s,X_t,W_r)
 #s = f(X_s.T,X_t.T,W,x_r)
-print(s)
-print(s.shape)
+end = time.time()
+print(end-start)
 
 
 '''
