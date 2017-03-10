@@ -376,46 +376,22 @@ class TypeRegularizer(Bilinear):
     def __init__(self,config,neg_sampler):
         config['model'] = constants.bilinear
         super(TypeRegularizer, self).__init__(config, neg_sampler)
-        self.cats = self.load_categories(config.get('category path',constants.cat_file))
-        self.num_cat_negs = config.get('num_dev_negs',constants.num_dev_negs)
-        self.all_cats = self.get_all_cats()
+
         self.alpha = util.to_floatX(config['alpha'])
         type_reg = get_theano_model(constants.tr)
         self.tr_fprop = type_reg['fprop']
         self.tr_bprop = type_reg['bprop']
+        self.attn = type_reg['attn']
 
-    def load_categories(self,cat_path):
-        print("Loading categories from {}".format(cat_path))
+    def unpack_categories(self,params,ex,is_target):
+        if is_target:
+            pos_cats = list(self.neg_sampler.sample_pos_cats(ex, is_target))
+        else:
+            pos_cats = list(self.neg_sampler.sample_pos_cats(ex, is_target))
 
-        with open(cat_path) as f:
-            cats = pickle.load(f)
-        print("Finished loading category data")
-        return cats
-
-    def get_all_cats(self):
-        all_cats = set()
-        for c in self.cats.itervalues():
-            all_cats.update(c)
-        return all_cats
-    
-    def cats_for_id(self,id):
-        pos_cats = self.cats.get(id,set())
-        pos_cats.add(constants.universal_cat)
-        return pos_cats
-
-    def sample_neg_cats(self,id):
-        pos_cats = self.cats_for_id(id)
-        candidates = list(self.all_cats.difference(pos_cats))
-        samples = set([candidates[x] for x in np.random.choice(range(len(candidates)),size=self.neg_samples,replace=False)])
-        intersect = samples.intersection(pos_cats)
-        assert len(intersect) == 0
-        return list(samples)
-
-    def unpack_categories(self,entity,params):
-        pos_cats = list(self.cats_for_id(entity))
-        neg_cats = self.sample_neg_cats(entity)
-        pos_v_cats = self.unpack_entities(params,pos_cats)
-        neg_v_cats = self.unpack_entities(params, neg_cats)
+        neg_cats = self.neg_sampler.sample_neg_cats(ex, is_target)
+        pos_v_cats = self.process_cats(params,pos_cats)
+        neg_v_cats = self.process_cats(params,neg_cats)
         return (pos_v_cats,pos_cats),(neg_v_cats,neg_cats)
 
     def cost(self,params,ex):
@@ -423,10 +399,10 @@ class TypeRegularizer(Bilinear):
         x_s, x_t, W_r = self.unpack_triple(params, ex)
         X_t_batch,t_negs = self.get_neg_batch(params,ex,x_t,True)
         if len(t_negs)>0:
-            x_s = np.transpose(x_s)
-            cost += self.fprop(x_s, X_t_batch, W_r)
-            pos_cats,neg_cats = self.unpack_categories(ex.t,params)
-            if pos_cats[0].shape[0] > 1:
+            x_s_t = np.transpose(x_s)
+            cost += self.fprop(x_s_t, X_t_batch, W_r)
+            pos_cats,neg_cats = self.unpack_categories(params,ex,True)
+            if len(pos_cats[1]) > 1:
                 W_c = self.unpack_relations(params,(constants.cat_rel,))
                 cost += self.tr_fprop(x_s, x_t, W_r, W_c,pos_cats[0],neg_cats[0],self.alpha)
         return cost
@@ -450,19 +426,18 @@ class TypeRegularizer(Bilinear):
             s_name = ex.s
             t_name = ex.t
             W_r = W_r
-            entity = ex.t
+
         else:
             source = x_t
             target = x_s
             s_name = ex.t
             t_name = ex.s
             W_r = np.transpose(W_r)
-            entity = ex.s
 
-        pos_cats, neg_cats = self.unpack_categories(entity, params)
-        # number of categories will at least 1 (every entity is an object).
+
+        pos_cats, neg_cats = self.unpack_categories(params,ex,is_target)
         # More than one required for attention (hard or soft)
-        if pos_cats[0].shape[0] > 1:
+        if len(pos_cats[1]) > 1:
             W_c = self.unpack_relations(params, (constants.cat_rel,))
             gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = self.tr_bprop(source, target, W_r,
                                                                  W_c,pos_cats[0],neg_cats[0],self.alpha)
@@ -479,7 +454,24 @@ class TypeRegularizer(Bilinear):
             grad = self.collect_batch_entity_grads(grad, pos_cats[1], g_pos.T,self.enforce_shape)
             grad = self.collect_batch_entity_grads(grad, neg_cats[1], g_neg.T, self.enforce_shape)
 
-            return grad
+        return grad
+
+    def attention(self, params, ex):
+        x_s, x_t, W_r = self.unpack_triple(params, ex)
+        W_c = self.unpack_relations(params, (constants.cat_rel,))
+        cats = self.neg_samples.get_cats(ex.r[0])
+        v_cats = self.unpack_entities(params, cats)
+        attn = self.attn(x_s, W_r, W_c, np.asarray(v_cats))
+        return attn, cats
+
+    def process_cats(self, params, cats):
+        v_cats = self.unpack_entities(params, cats)
+        if len(cats) > 1:
+            return v_cats
+        if len(cats) < 1:
+            return list()
+        v_cats = util.pad_zeros(v_cats)
+        return v_cats
 
 class CoupledRescal(Model):
     def __init__(self,config,neg_sampler):
