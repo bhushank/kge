@@ -107,6 +107,15 @@ def transE():
 
 
 
+def test():
+    W_c = T.matrix('w_c')
+    neg_cats = T.matrix('neg')
+    x_t = T.matrix('x_t')
+    neg_1 = T.nnet.sigmoid(T.dot(T.dot(W_c, neg_cats).T, x_t))
+    neg_2  = T.nnet.sigmoid(x_t.T.dot(W_c).dot(neg_cats))
+    n1 = theano.function([x_t,W_c,neg_cats],neg_1[:,0])
+    n2 = theano.function([x_t, W_c, neg_cats], neg_2[0])
+    return n1,n2
 
 def type_regularizer():
     x_s = T.matrix('x_s')
@@ -116,12 +125,13 @@ def type_regularizer():
     alpha = T.scalar('alpha')
     pos_cats = T.matrix('pos')
     neg_cats = T.matrix('neg')
-    attn,pos = soft_attention(x_s,x_t,W_r,W_c,pos_cats)
+    #attn,pos = soft_attention(x_s,x_t,W_r,W_c,pos_cats)
+    pos = T.nnet.sigmoid(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
     # Max Margin loss
     neg = T.nnet.sigmoid(T.dot(T.dot(W_c, neg_cats).T,x_t))
-    margin = 1.0 - T.nnet.sigmoid(pos) + neg
+    margin = 1.0 - pos[0,0] + neg
     pos_margin = T.maximum(T.zeros_like(margin), margin)
-    cost = alpha*T.sum(pos_margin)
+    cost = alpha*T.max(pos_margin)
     # Gradient
     gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[x_s, x_t, W_r, W_c,pos_cats,neg_cats],consider_constant=[alpha])
 
@@ -135,10 +145,12 @@ def type_regularizer():
     bprop.trust_input = True
 
     print('Compiling soft type_regularizer attention')
-    attn = theano.function([x_s,W_r,W_c,pos_cats], attn, name='attention', mode='FAST_RUN')
+    attn = theano.function([x_s,W_r,W_c,pos_cats], pos[0,0], name='attention', mode='FAST_RUN')
     attn.trust_input = True
 
     return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
+
+
 
 def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
     # attention vector for slecting categories

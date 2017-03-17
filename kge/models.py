@@ -5,9 +5,8 @@ import numpy as np
 import theano
 import util
 from theano_models import get_model as get_theano_model
-import cPickle as pickle
 import constants
-
+import copy
 
 def get_model(config, neg_sampler):
     model = config['model']
@@ -374,8 +373,9 @@ class TransE(Model):
 
 class TypeRegularizer(Bilinear):
     def __init__(self,config,neg_sampler):
-        config['model'] = constants.bilinear
-        super(TypeRegularizer, self).__init__(config, neg_sampler)
+        config_cp = copy.copy(config)
+        config_cp['model'] = constants.bilinear
+        super(TypeRegularizer, self).__init__(config_cp, neg_sampler)
 
         self.alpha = util.to_floatX(config['alpha'])
         type_reg = get_theano_model(constants.tr)
@@ -384,15 +384,12 @@ class TypeRegularizer(Bilinear):
         self.attn = type_reg['attn']
 
     def unpack_categories(self,params,ex,is_target):
-        if is_target:
-            pos_cats = list(self.neg_sampler.sample_pos_cats(ex, is_target))
-        else:
-            pos_cats = list(self.neg_sampler.sample_pos_cats(ex, is_target))
 
+        pos_cat = self.neg_sampler.sample_pos_cats(ex, is_target)
         neg_cats = self.neg_sampler.sample_neg_cats(ex, is_target)
-        pos_v_cats = self.process_cats(params,pos_cats)
+        pos_v_cat = self.process_cats(params,[pos_cat])
         neg_v_cats = self.process_cats(params,neg_cats)
-        return (pos_v_cats,pos_cats),(neg_v_cats,neg_cats)
+        return (pos_v_cat,pos_cat),(neg_v_cats,neg_cats)
 
     def cost(self,params,ex):
         cost = 0.0
@@ -426,14 +423,12 @@ class TypeRegularizer(Bilinear):
             s_name = ex.s
             t_name = ex.t
             W_r = W_r
-
         else:
             source = x_t
             target = x_s
             s_name = ex.t
             t_name = ex.s
             W_r = np.transpose(W_r)
-
 
         pos_cats, neg_cats = self.unpack_categories(params,ex,is_target)
         # More than one required for attention (hard or soft)
@@ -451,26 +446,27 @@ class TypeRegularizer(Bilinear):
                 grad = self.collect_rel_grads(grad, ex.r, np.transpose(gx_r))
 
             grad = self.collect_rel_grads(grad, (constants.cat_rel,), gx_c)
-            grad = self.collect_batch_entity_grads(grad, pos_cats[1], g_pos.T,self.enforce_shape)
+            grad = self.collect_entity_grads(grad, pos_cats[1], g_pos.T,self.enforce_shape)
             grad = self.collect_batch_entity_grads(grad, neg_cats[1], g_neg.T, self.enforce_shape)
 
         return grad
 
-    def attention(self, params, ex):
+    def attention(self, params, ex, cat):
         x_s, x_t, W_r = self.unpack_triple(params, ex)
         W_c = self.unpack_relations(params, (constants.cat_rel,))
-        cats = self.neg_samples.get_cats(ex.r[0])
-        v_cats = self.unpack_entities(params, cats)
-        attn = self.attn(x_s, W_r, W_c, np.asarray(v_cats))
-        return attn, cats
+        v_cats = self.unpack_entities(params, cat)
+        attn = self.attn(x_s, W_r, W_c, v_cats)
+        return attn
 
     def process_cats(self, params, cats):
         v_cats = self.unpack_entities(params, cats)
+        '''
         if len(cats) > 1:
             return v_cats
         if len(cats) < 1:
             return list()
         v_cats = util.pad_zeros(v_cats)
+        '''
         return v_cats
 
 class CoupledRescal(Model):

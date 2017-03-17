@@ -73,6 +73,11 @@ class NegativeSampler(object):
             self._cat_entities = self._invert_dict(cats)
             self._test_cats = self._get_test_cats()
 
+    def get_test_cats(self,rel):
+        cats = self._test_cats.get(rel,set())
+        if len(cats)>0:
+            return cats
+        return self._cat_entities.keys()
 
     def _get_negs(self,data):
         negatives = defaultdict(lambda : tuple([set(),set()]))
@@ -149,11 +154,57 @@ class NegativeSampler(object):
         '''
         test_cats = dict()
         for ex in self._triples:
+
             cats = test_cats.get(ex.r[0], set())
             if ex.t in self._entity_cats:
                 cats.update(self._entity_cats[ex.t])
             test_cats[ex.r[0]] = cats
+            '''
+
+            cats = test_cats.get(ex.r[0], set())
+            if ex.t in self._entity_cats:
+                gold_cats = self._entity_cats[ex.t]
+                if len(cats)>0:
+                    cats.update(cats.intersection(gold_cats))
+                else:
+                    cats.update(self._entity_cats[ex.t])
+            test_cats[ex.r[0]] = cats
+            '''
         return test_cats
+
+    def min_cat(self,cats):
+        min = float('inf')
+        min_cat = ""
+        for c in cats:
+            if len(self._cat_entities[c]) <= min:
+                min = len(self._cat_entities[c])
+                min_cat = c
+        return min_cat
+
+    def count_test_cats(self,test_data):
+        intersect_count = 0
+        for ex in test_data:
+            test_cats = self._test_cats[ex.r[0]]
+            gold_cats = self._entity_cats.get(ex.t,set())
+            intersect = test_cats.intersection(gold_cats)
+            if len(intersect) > 0:
+                intersect_count += 1
+        print("Intersection Ratio {}".format(intersect_count / float(len(test_data))))
+
+    def verify_claim(self,test_data):
+        count = 0
+        rel_count = 0
+        for ex in test_data:
+            cats = self._test_cats[ex.r[0]]
+            if len(cats) <1:
+                rel_count += 1
+                continue
+            cat = self.min_cat(cats)
+            candidates = self._cat_entities[cat]
+            if ex.t not in candidates:
+                count += 1
+        print("Percentage coverage {}".format(1.0 - float(count)/len(test_data)))
+        print("Relations without categories {}".format(rel_count))
 
     def _invert_dict(self, d):
         inv_d = dict()
@@ -166,13 +217,15 @@ class NegativeSampler(object):
 
 
     def sample_pos_cats(self,ex,is_target):
+
         if is_target:
-            pos = self._entity_cats.get(ex.t,set())
+            cats = self._entity_cats.get(ex.t, set())
         else:
-            pos = self._entity_cats.get(ex.s,set())
-        test_cats = self._test_cats[ex.r[0]]
-        samples = test_cats.union(pos)
-        return samples
+            cats = self._entity_cats.get(ex.s, set())
+        pos = self.min_cat(cats)
+        #test_cats = self._test_cats[ex.r[0]]
+        #samples = test_cats.union(pos)
+        return pos
 
     def sample_neg_cats(self, ex,is_target):
         '''
@@ -195,10 +248,6 @@ class NegativeSampler(object):
         return list(samples)
 
 
-
-
-
-
 @util.memoize
 def load_params(params_path,model):
     print("Loading Params from {}".format(params_path))
@@ -212,8 +261,8 @@ def load_params(params_path,model):
 def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_path_data=False,is_cat=False):
 
     data_set = {}
-    train = 'train_no_cats' if is_cat else 'train'
-    data_set['train'] = read_file(os.path.join(path,train),max_examples,is_path_data)
+    #train = 'train_no_cats' if is_cat else 'train'
+    data_set['train'] = read_file(os.path.join(path,'train'),max_examples,is_path_data)
     if dev_mode:
         data_set['test'] = read_file(os.path.join(path,'dev'),max_examples,is_path_data)
     else:

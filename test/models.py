@@ -20,7 +20,7 @@ class TestModels(unittest.TestCase):
         return num/np.sum(num)
 
     def max_margin(self,scores):
-        margin = np.maximum(0,1-self.sigmoid(scores[0]) + seltf.sigmoid(scores[1:]))
+        margin = np.maximum(0,1-self.sigmoid(scores[0]) + self.sigmoid(scores[1:]))
         return np.sum(margin)
 
     def numpy_bilinear_model(self,x_s,x_t,W):

@@ -21,20 +21,23 @@ x_s = np.random.randn(dim,1)
 x_t = np.random.randn(dim,1)
 W_r = np.random.randn(dim,dim)
 W_c = np.random.randn(dim,dim)
-pos_cats = np.random.randn(dim,num_cats)
+pos_cats = np.random.randn(dim,1)
 neg_cats = np.random.randn(dim,num_cats+4)
 
-from theano_models import test_attention, type_regularizer
-attn,pos = test_attention()
-print(attn(x_s, W_r, W_c, pos_cats))
-print(pos(x_s, x_t, W_r, W_c, pos_cats))
+
+
+from theano_models import test
+n1,n2 = test()
+print(n1(x_t,W_c,neg_cats))
+print(n2(x_t,W_c,neg_cats))
+'''
 
 f = type_regularizer()
-cost = f['fprop']
-print(cost(x_s, x_t, W_r, W_c, pos_cats,neg_cats))
+attn = f['attn']
+print(attn(x_s,W_r,W_c,pos_cats))
 
 
-'''
+
 X_s = []
 X_t = []
 dim = 6
