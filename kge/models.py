@@ -5,7 +5,6 @@ import numpy as np
 import theano
 import util
 from theano_models import get_model as get_theano_model
-from data import load_categories
 import constants
 import copy
 
@@ -20,8 +19,6 @@ def get_model(config, neg_sampler):
         return HolE(config, neg_sampler)
     elif model == constants.transE:
         return TransE(config, neg_sampler)
-    elif model == constants.tr:
-        return TypeRegularizer(config,neg_sampler)
     else:
         raise NotImplementedError('Model {} not implemented'.format(model))
 
@@ -294,7 +291,7 @@ class HolE(S_Rescal):
             gx_s, gx_t, gx_r, _ = self.bprop(x_s, X_t_batch, x_r, W)
             self.collect_batch_grads(grad, batch, gx_s, gx_t, gx_r, negs, is_target)
         else:
-            X_s_batch, negs = self.get_neg_batch(params, batch, x_s, is_target)
+            X_s_batch, negs = self.unpack_neg_batch(params, batch, x_s, is_target)
             gx_s, gx_t, gx_r, _ = self.bprop(X_s_batch, x_t, x_r, W)
             self.collect_batch_grads(grad, batch, gx_s, gx_t, gx_r, negs, is_target)
 
@@ -334,17 +331,18 @@ class TransE(Model):
             return util.to_floatX(self.param_scale * np.random.randn(self.e_d))
 
 
-    def gradient(self,params,ex):
-        grad = SparseParams(d=dict())
-        # back prop only for target negatives
-        grad = self.bprop_model(grad, params, ex)
-        return grad
-
     def bprop_model(self, grad, params, batch,is_target=True):
+
         x_s, x_t, x_r = self.unpack_batch(params, batch)
-        X_t_batch, negs = self.unpack_neg_batch(params, batch, x_t, is_target)
-        gx_s, gx_t, gx_r = self.bprop(x_s, np.transpose(X_t_batch,axes=[0,2,1]), x_r)
-        self.collect_batch_grads(grad, batch, gx_s, np.transpose(gx_t,axes=[0,2,1]), gx_r, negs, is_target)
+        if is_target:
+            X_t_batch, negs = self.unpack_neg_batch(params, batch, x_t, is_target)
+            gx_s, gx_t, gx_r = self.bprop(x_s,  np.transpose(X_t_batch, axes=[0, 2, 1]), x_r)
+            self.collect_batch_grads(grad, batch, gx_s, np.transpose(gx_t, axes=[0, 2, 1]), gx_r, negs, is_target)
+        else:
+            X_s_batch, negs = self.unpack_neg_batch(params, batch, x_s, is_target)
+            gx_t, gx_s, gx_r = self.bprop(x_t, np.transpose(X_s_batch, axes=[0, 2, 1]), x_r )
+            self.collect_batch_grads(grad, batch, np.transpose(gx_s,axes=[0, 2, 1]), gx_t, gx_r, negs, is_target)
+
         return grad
 
     def enforce_shape(self,nd_array):
@@ -366,120 +364,6 @@ class TransE(Model):
             X_batch = np.append(np.reshape(x,(x.shape[0],1)), v_negs, axis=1)
             return X_batch,negs
         return list(),list()
-
-
-class TypeRegularizer(Bilinear):
-    def __init__(self,config,neg_sampler):
-        config_cp = copy.copy(config)
-        config_cp['model'] = constants.bilinear
-        super(TypeRegularizer, self).__init__(config_cp, neg_sampler)
-
-        self.alpha = util.to_floatX(config['alpha'])
-        type_reg = get_theano_model(constants.tr)
-        self.tr_fprop = type_reg['fprop']
-        self.tr_bprop = type_reg['bprop']
-        self.attn = type_reg['attn']
-
-    def unpack_categories(self,params,batch,is_target):
-        pos_batch = []
-        neg_batch = []
-        pos_v_cats_batch = []
-        neg_v_cats_batch = []
-        for ex in batch:
-            if is_target:
-                pos_cats = list(self.neg_sampler.sample_pos_cats(ex,is_target))
-            else:
-                pos_cats = list(self.neg_sampler.sample_pos_cats(ex,is_target))
-
-            neg_cats = self.neg_sampler.sample_neg_cats(ex,is_target)
-
-            pos_v_cats = self.process_cats(params,pos_cats,50)
-            neg_v_cats = self.process_cats(params, neg_cats, 100)
-            pos_batch.append(pos_cats)
-            neg_batch.append(neg_cats)
-            pos_v_cats_batch.append(pos_v_cats)
-            neg_v_cats_batch.append(neg_v_cats)
-
-        return (np.asarray(pos_v_cats_batch),pos_batch),(np.asarray(neg_v_cats_batch),neg_batch)
-
-    def process_cats(self,params,cats,dim):
-        while len(cats)>50:
-            cats.pop()
-        v_cats = self.unpack_entities(params, cats) if len(cats) > 0 \
-            else np.zeros((100, 1), dtype=theano.config.floatX)
-        v_cats = util.pad_zeros(v_cats, dim)
-        return v_cats
-
-
-    def attention(self,params,batch):
-        x_s, x_t, W_r = self.unpack_batch(params,batch)
-        W_c = self.unpack_relations(params, (constants.cat_rel,))
-        cats = [self.neg_samples.get_cats(ex.r[0]) for ex in batch]
-        v_cats = [self.unpack_entities(params, c) for c in cats]
-        attn = self.attn(x_s, W_r, W_c,np.asarray(v_cats))
-        return attn,cats
-
-    def cost(self,params,batch):
-        cost = 0.0
-        x_s, x_t, W_r = self.unpack_batch(params, batch)
-        X_t_batch, t_negs = self.unpack_neg_batch(params, batch, x_t, True)
-        x_s_t = np.transpose(x_s, axes=[0, 2, 1])
-        cost += self.fprop(x_s_t, X_t_batch, W_r)
-        pos_cats,neg_cats = self.unpack_categories(params,batch,True)
-        W_c = self.unpack_relations(params,(constants.cat_rel,))
-        cost += self.tr_fprop(x_s, x_t, W_r, W_c,pos_cats[0],neg_cats[0],self.alpha)
-        return cost/len(batch)
-
-    def gradient(self,params,ex):
-        grad = SparseParams(d=dict())
-        # back prop for target negatives
-        grad = self.bprop_model(grad, params, ex, True)
-        # back prop for source negatives
-        grad = self.bprop_model(grad, params, ex, False)
-        # Add type regularized gradient
-        grad = self.tr_bprop_model(grad,params,ex,True)
-        grad = self.tr_bprop_model(grad, params, ex, False)
-        return grad
-
-    def tr_bprop_model(self,grad,params,batch,is_target):
-        x_s, x_t, W_r = self.unpack_batch(params, batch)
-        W_c = self.unpack_relations(params, (constants.cat_rel,))
-        if is_target:
-            pos_cats, neg_cats = self.unpack_categories(params, batch,is_target)
-            gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = self.tr_bprop(x_s, x_t, W_r,
-                                                                 W_c,pos_cats[0],neg_cats[0],self.alpha)
-
-            grad = self.collect_grads(grad,batch,gx_s, gx_t,gx_r,[],self.enforce_shape)
-            grad = self.collect_cat_grads(grad,pos_cats[1],g_pos)
-            grad = self.collect_cat_grads(grad, neg_cats[1], g_neg)
-            # W_r transpose if source
-        else:
-            W_r = np.transpose(W_r,axes=[0,2,1])
-            pos_cats, neg_cats = self.unpack_categories(params, batch, is_target)
-            gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = self.tr_bprop(x_t, x_s, W_r,
-                                                                 W_c, pos_cats[0], neg_cats[0], self.alpha)
-            grad = self.collect_grads(grad, batch, gx_s, gx_t, gx_r, [], self.enforce_shape)
-            grad = self.collect_cat_grads(grad, pos_cats[1], g_pos)
-            grad = self.collect_cat_grads(grad, neg_cats[1], g_neg)
-
-        return grad
-
-    def collect_grads(self, grad, batch, gx_s, gx_t, gW_r,negs, is_target):
-        for ind, ex in enumerate(batch):
-            if is_target:
-                grad = self.collect_entity_grads(grad, ex.s, gx_s[ind], self.enforce_shape)
-            else:
-                grad = self.collect_entity_grads(grad, ex.t, gx_t[ind], self.enforce_shape)
-
-            grad = self.collect_rel_grads(grad, ex.r, gW_r[ind])
-
-        return grad
-
-    def collect_cat_grads(self,grad,cats,grad_c):
-        for ind,c in enumerate(cats):
-            grad = self.collect_batch_entity_grads(grad,c,grad_c[ind].T,self.enforce_shape)
-        return grad
-
 
 
 

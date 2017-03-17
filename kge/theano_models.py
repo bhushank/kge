@@ -15,8 +15,6 @@ def get_model(model):
         return s_rescal()
     elif model == constants.transE:
         return transE()
-    elif model == constants.tr:
-        return type_regularizer()
     else:
         raise NotImplementedError("Model {} not implemented".format(model))
 
@@ -44,8 +42,8 @@ def s_rescal():
                                           outputs_info=None)
     cost = T.sum(cost_results)
 
-    gx_s, gx_t, gx_r, gW = T.grad(cost,wrt=[X_s,X_t,x_r,W])
-
+    gx_s, gx_t, gx_r, gW_batch, = T.grad(cost,wrt=[X_s,X_t,x_r,W])
+    gW = gW_batch.sum()
 
     print('Compiling s-rescal fprop')
     fprop = theano.function([X_s,X_t,x_r,W],cost,name='fprop',mode='FAST_RUN')
@@ -70,7 +68,6 @@ def bilinear():
     X_s = T.tensor3('X_s')
     X_t = T.tensor3('X_t')
     W_r = T.tensor3('W_r')
-
 
 
     def batch_scores(x_s,x_t,w_r):
@@ -144,56 +141,6 @@ def transE():
 
     return {'fprop': fprop, 'bprop': bprop, 'score': score}
 
-
-def type_regularizer():
-    X_s = T.tensor3('x_s')
-    X_t = T.tensor3('x_t')
-    W_r = T.tensor3('w_r')
-    W_c = T.matrix('w_c')
-    alpha = T.scalar('alpha')
-    pos_cats = T.tensor3('pos')
-    neg_cats = T.tensor3('neg')
-
-
-    def batch_cost(x_s,x_t,w_r,p,n):
-        a = soft_attention(x_s, w_r, p, W_c)
-        pos = x_t.T.dot(W_c).dot(p).dot(a.T)
-        # Max Margin loss
-        neg = T.nnet.sigmoid(T.dot(T.dot(W_c, n).T,x_t))
-        margin = 1.0 - T.nnet.sigmoid(pos) + neg
-        pos_margin = T.maximum(T.zeros_like(margin), margin)
-        return T.sum(pos_margin)
-
-    cost_results, updates = theano.scan(lambda x_s, x_t, w_r,p,n: batch_cost(x_s, x_t, w_r,p,n),
-                                        sequences=[X_s, X_t, W_r,pos_cats,neg_cats],
-                                        outputs_info=None)
-
-    a, updates = theano.scan(lambda x_s, w_r,p,W_c: soft_attention(x_s, w_r,p,W_c),
-                                        sequences=[X_s, W_r,pos_cats],non_sequences=[W_c],
-                                        outputs_info=None)
-    cost = alpha*T.sum(cost_results)
-    # Gradient
-    gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[X_s, X_t, W_r, W_c,pos_cats,neg_cats],consider_constant=[alpha])
-
-    print('Compiling soft type_regularizer fprop')
-    fprop = theano.function([X_s, X_t, W_r, W_c,pos_cats,neg_cats,alpha], cost, name='fprop', mode='FAST_RUN')
-    fprop.trust_imput = True
-
-    print('Compiling soft type_regularizer soft bprop')
-    bprop = theano.function([X_s,X_t, W_r, W_c,pos_cats,neg_cats,alpha],
-                            [gx_s, gx_t, gx_r, gx_c, g_pos, g_neg], name='bprop', mode='FAST_RUN')
-    bprop.trust_input = True
-
-    print('Compiling soft type_regularizer attention')
-    attn = theano.function([X_s,W_r,W_c,pos_cats], a, name='attention', mode='FAST_RUN')
-    attn.trust_input = True
-
-    return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
-
-def soft_attention(x_s,W_r,pos_cats,W_c):
-    # attention vector for slecting categories
-    a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
-    return a[0]
 
 def max_margin(scores):
     s = T.nnet.sigmoid(scores)

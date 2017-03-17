@@ -2,8 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b35cb61a-c55a-4dd6-839b-6b03ab4742fa" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/scripts.py" afterPath="$PROJECT_DIR$/kge/scripts.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/constants.py" afterPath="$PROJECT_DIR$/kge/constants.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/data.py" afterPath="$PROJECT_DIR$/kge/data.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/experiment_runner.py" afterPath="$PROJECT_DIR$/kge/experiment_runner.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/models.py" afterPath="$PROJECT_DIR$/kge/models.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/kge/theano_models.py" afterPath="$PROJECT_DIR$/kge/theano_models.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/models.py" afterPath="$PROJECT_DIR$/test/models.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -24,8 +29,8 @@
       <file leaf-file-name="experiment_runner.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/experiment_runner.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="720">
-              <caret line="48" column="48" lean-forward="false" selection-start-line="48" selection-start-column="48" selection-end-line="48" selection-end-column="48" />
+            <state relative-caret-position="1710">
+              <caret line="127" column="54" lean-forward="false" selection-start-line="127" selection-start-column="54" selection-end-line="127" selection-end-column="54" />
               <folding>
                 <element signature="e#31#46#0" expanded="true" />
               </folding>
@@ -33,11 +38,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="models.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/kge/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="557">
-              <caret line="236" column="42" lean-forward="true" selection-start-line="236" selection-start-column="42" selection-end-line="236" selection-end-column="42" />
+            <state relative-caret-position="165">
+              <caret line="247" column="6" lean-forward="false" selection-start-line="247" selection-start-column="6" selection-end-line="247" selection-end-column="6" />
               <folding>
                 <element signature="e#31#66#0" expanded="true" />
               </folding>
@@ -48,8 +53,8 @@
       <file leaf-file-name="theano_models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/theano_models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-429">
-              <caret line="156" column="0" lean-forward="true" selection-start-line="156" selection-start-column="0" selection-end-line="156" selection-end-column="0" />
+            <state relative-caret-position="120">
+              <caret line="11" column="35" lean-forward="false" selection-start-line="11" selection-start-column="35" selection-end-line="11" selection-end-column="35" />
               <folding>
                 <element signature="e#31#56#0" expanded="true" />
               </folding>
@@ -57,14 +62,24 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="scripts.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="scripts.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/scripts.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="315">
-              <caret line="30" column="25" lean-forward="true" selection-start-line="30" selection-start-column="25" selection-end-line="30" selection-end-column="25" />
+            <state relative-caret-position="345">
+              <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
               <folding>
                 <element signature="e#0#21#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/test/models.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1575">
+              <caret line="107" column="59" lean-forward="false" selection-start-line="107" selection-start-column="59" selection-end-line="107" selection-end-column="59" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -79,21 +94,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="parameters.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/kge/parameters.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="435">
-              <caret line="31" column="0" lean-forward="false" selection-start-line="31" selection-start-column="0" selection-end-line="31" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="algorithms.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/algorithms.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1335">
-              <caret line="93" column="53" lean-forward="false" selection-start-line="93" selection-start-column="53" selection-end-line="93" selection-end-column="53" />
+            <state relative-caret-position="354">
+              <caret line="93" column="0" lean-forward="false" selection-start-line="93" selection-start-column="0" selection-end-line="93" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -102,8 +107,8 @@
       <file leaf-file-name="data.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2595">
-              <caret line="173" column="38" lean-forward="false" selection-start-line="173" selection-start-column="38" selection-end-line="173" selection-end-column="38" />
+            <state relative-caret-position="1095">
+              <caret line="80" column="0" lean-forward="false" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
               <folding>
                 <element signature="e#31#42#0" expanded="true" />
               </folding>
@@ -114,8 +119,8 @@
       <file leaf-file-name="optimizer.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/optimizer.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="120">
-              <caret line="14" column="26" lean-forward="false" selection-start-line="14" selection-start-column="26" selection-end-line="14" selection-end-column="26" />
+            <state relative-caret-position="181">
+              <caret line="125" column="0" lean-forward="false" selection-start-line="125" selection-start-column="0" selection-end-line="125" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -124,8 +129,8 @@
       <file leaf-file-name="constants.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/kge/constants.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="375">
-              <caret line="25" column="18" lean-forward="false" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
+            <state relative-caret-position="345">
+              <caret line="23" column="21" lean-forward="false" selection-start-line="23" selection-start-column="21" selection-end-line="23" selection-end-column="21" />
               <folding />
             </state>
           </provider>
@@ -190,22 +195,23 @@
         <option value="$PROJECT_DIR$/independent_scripts/categories.py" />
         <option value="$PROJECT_DIR$/independent_scripts/hyperparams.py" />
         <option value="$PROJECT_DIR$/kge/algorithms.py" />
+        <option value="$PROJECT_DIR$/kge/util.py" />
+        <option value="$PROJECT_DIR$/kge/optimizer.py" />
+        <option value="$PROJECT_DIR$/kge/scripts.py" />
+        <option value="$PROJECT_DIR$/kge/theano_models.py" />
         <option value="$PROJECT_DIR$/test/models.py" />
         <option value="$PROJECT_DIR$/kge/data.py" />
-        <option value="$PROJECT_DIR$/kge/util.py" />
-        <option value="$PROJECT_DIR$/kge/models.py" />
         <option value="$PROJECT_DIR$/kge/constants.py" />
         <option value="$PROJECT_DIR$/kge/experiment_runner.py" />
-        <option value="$PROJECT_DIR$/kge/optimizer.py" />
-        <option value="$PROJECT_DIR$/kge/theano_models.py" />
-        <option value="$PROJECT_DIR$/kge/scripts.py" />
+        <option value="$PROJECT_DIR$/kge/models.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="1280" />
-    <option name="width" value="1680" />
-    <option name="height" value="1028" />
+    <option name="y" value="3" />
+    <option name="width" value="1650" />
+    <option name="height" value="1004" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -223,6 +229,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -280,7 +287,6 @@
         </subPane>
       </pane>
       <pane id="Scope" />
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -289,7 +295,7 @@
     <property name="recentsLimit" value="5" />
     <property name="auto.test.manager.delay" value="1000" />
   </component>
-  <component name="RunManager" selected="Python.scripts (1)">
+  <component name="RunManager" selected="Python.experiment_runner">
     <configuration default="false" name="experiment_runner" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -303,7 +309,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="kge-master" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/kge/experiment_runner.py" />
-      <option name="PARAMETERS" value="$USER_HOME$/Data/bordes/freebase freebase_tr" />
+      <option name="PARAMETERS" value="$USER_HOME$/Data/bordes/freebase freebase_s-bilinear" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
     </configuration>
@@ -518,9 +524,9 @@
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python.scripts (1)" />
-        <item index="1" class="java.lang.String" itemvalue="Python.runner" />
-        <item index="2" class="java.lang.String" itemvalue="Python.experiment_runner" />
+        <item index="0" class="java.lang.String" itemvalue="Python.experiment_runner" />
+        <item index="1" class="java.lang.String" itemvalue="Python.scripts (1)" />
+        <item index="2" class="java.lang.String" itemvalue="Python.runner" />
         <item index="3" class="java.lang.String" itemvalue="Python.hyperparams" />
         <item index="4" class="java.lang.String" itemvalue="Python.categories" />
       </list>
@@ -575,19 +581,19 @@
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="1280" y="0" width="1680" height="1028" extended-state="7" />
+    <frame x="1280" y="3" width="1650" height="1004" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.13630952" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.13575758" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.54603857" sideWeight="0.61190474" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32976446" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3704497" sideWeight="0.38809523" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.37032968" sideWeight="0.38809523" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.30406854" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.30392158" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -647,11 +653,16 @@
           <line>17</line>
           <option name="timeStamp" value="334" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/kge/models.py</url>
+          <line>343</line>
+          <option name="timeStamp" value="538" />
+        </line-breakpoint>
       </breakpoints>
       <breakpoints-dialog>
         <breakpoints-dialog />
       </breakpoints-dialog>
-      <option name="time" value="532" />
+      <option name="time" value="542" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -847,9 +858,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="105">
           <caret line="7" column="35" lean-forward="false" selection-start-line="7" selection-start-column="35" selection-end-line="7" selection-end-column="35" />
-          <folding>
-            <element signature="e#0#18#0" expanded="false" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -895,13 +904,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/models.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="471">
-          <caret line="141" column="70" lean-forward="true" selection-start-line="141" selection-start-column="70" selection-end-line="141" selection-end-column="70" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/local/lib/python2.7/dist-packages/theano/tensor/nnet/nnet.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="6">
@@ -935,9 +937,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1770">
           <caret line="118" column="58" lean-forward="false" selection-start-line="118" selection-start-column="58" selection-end-line="118" selection-end-column="58" />
-          <folding>
-            <element signature="e#31#49#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -945,7 +944,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="435">
           <caret line="31" column="0" lean-forward="false" selection-start-line="31" selection-start-column="0" selection-end-line="31" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -957,76 +955,84 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/kge/scripts.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="345">
+          <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#21#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/models.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1575">
+          <caret line="107" column="59" lean-forward="false" selection-start-line="107" selection-start-column="59" selection-end-line="107" selection-end-column="59" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/kge/data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2595">
-          <caret line="173" column="38" lean-forward="false" selection-start-line="173" selection-start-column="38" selection-end-line="173" selection-end-column="38" />
+        <state relative-caret-position="1095">
+          <caret line="80" column="0" lean-forward="false" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
           <folding>
             <element signature="e#31#42#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kge/algorithms.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1335">
-          <caret line="93" column="53" lean-forward="false" selection-start-line="93" selection-start-column="53" selection-end-line="93" selection-end-column="53" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/kge/experiment_runner.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="720">
-          <caret line="48" column="48" lean-forward="false" selection-start-line="48" selection-start-column="48" selection-end-line="48" selection-end-column="48" />
+        <state relative-caret-position="1710">
+          <caret line="127" column="54" lean-forward="false" selection-start-line="127" selection-start-column="54" selection-end-line="127" selection-end-column="54" />
           <folding>
             <element signature="e#31#46#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kge/constants.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="25" column="18" lean-forward="false" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/kge/optimizer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="14" column="26" lean-forward="false" selection-start-line="14" selection-start-column="26" selection-end-line="14" selection-end-column="26" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/kge/models.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="557">
-          <caret line="236" column="42" lean-forward="true" selection-start-line="236" selection-start-column="42" selection-end-line="236" selection-end-column="42" />
-          <folding>
-            <element signature="e#31#66#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/kge/theano_models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-429">
-          <caret line="156" column="0" lean-forward="true" selection-start-line="156" selection-start-column="0" selection-end-line="156" selection-end-column="0" />
+        <state relative-caret-position="120">
+          <caret line="11" column="35" lean-forward="false" selection-start-line="11" selection-start-column="35" selection-end-line="11" selection-end-column="35" />
           <folding>
             <element signature="e#31#56#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/kge/scripts.py">
+    <entry file="file://$PROJECT_DIR$/kge/constants.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="30" column="25" lean-forward="true" selection-start-line="30" selection-start-column="25" selection-end-line="30" selection-end-column="25" />
+        <state relative-caret-position="345">
+          <caret line="23" column="21" lean-forward="false" selection-start-line="23" selection-start-column="21" selection-end-line="23" selection-end-column="21" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/kge/optimizer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="181">
+          <caret line="125" column="0" lean-forward="false" selection-start-line="125" selection-start-column="0" selection-end-line="125" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/kge/algorithms.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="354">
+          <caret line="93" column="0" lean-forward="false" selection-start-line="93" selection-start-column="0" selection-end-line="93" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/kge/models.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="165">
+          <caret line="247" column="6" lean-forward="false" selection-start-line="247" selection-start-column="6" selection-end-line="247" selection-end-column="6" />
           <folding>
-            <element signature="e#0#21#0" expanded="true" />
+            <element signature="e#31#66#0" expanded="true" />
           </folding>
         </state>
       </provider>

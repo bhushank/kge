@@ -61,29 +61,9 @@ class Path(object):
 
 class NegativeSampler(object):
 
-    def __init__(self,triples,typed=True,cats=None):
+    def __init__(self,triples):
         self._triples = set(triples)
-        self.typed = typed
-        if typed:
-            self._typed_negs = self._get_negs(triples)
-        else:
-            self._entities = self._get_entities(triples)
-        if cats is not None:
-            self._entity_cats = cats
-            self._cat_entities = self._invert_dict(cats)
-            self._test_cats = self._get_test_cats()
-
-
-    def _get_negs(self,data):
-        negatives = defaultdict(lambda : tuple([set(),set()]))
-        for ex in data:
-            r = ex.r[0]
-            val = negatives[r]
-            val[0].add(ex.s)
-            val[1].add(ex.t)
-            negatives[r] = val
-
-        return negatives
+        self._entities = self._get_entities(triples)
 
     def _get_entities(self,data):
         entities  = set()
@@ -93,32 +73,14 @@ class NegativeSampler(object):
         return list(entities)
 
     def sample(self,ex,num_samples,is_target=True):
-        def get_candidates(r):
-            '''
-            Returns a copy of the candidates, so that sampled negatives
-            can be removed from the copy without affecting state
-            :param is_target: boolean
-            :param r: string
-            :return: candidates: set
-            '''
-            if self.typed:
-                candidates = self._typed_negs[r]
-                if is_target:
-                    return copy.copy(candidates[1])
-                else:
-                    return copy.copy(candidates[0])
+        def get_candidates():
             return copy.copy(self._entities)
 
         samples = set()
-        candidates = get_candidates(ex.r[0])
-        if is_target:
-            if ex.t in candidates:
-                candidates.remove(ex.t)
-        else:
-            if ex.s in candidates:
-                candidates.remove(ex.s)
-        candidates = list(candidates)
-        # source or target need not be present in candidates (dev data does not overlap with train)
+        candidates = get_candidates()
+        gold = ex.t if is_target else ex.s
+        if gold in candidates:
+            candidates.remove(gold)
         if len(candidates) <= num_samples:
             return candidates
 
@@ -133,68 +95,6 @@ class NegativeSampler(object):
                 return list(samples)
 
 
-    def get_typed_entities(self,categories):
-        entities = set()
-        for c in categories:
-            entities.update(self._cat_entities.get(c,set()))
-        return entities
-
-    '''
-    Negative Samples for Categories
-    '''
-    def _get_test_cats(self):
-        '''
-        Categories for test time, cannot use labelled data. Returns relation (range) category data
-        :return:
-        '''
-        test_cats = dict()
-        for ex in self._triples:
-            cats = test_cats.get(ex.r[0], set())
-            if ex.t in self._entity_cats:
-                cats.update(self._entity_cats[ex.t])
-            test_cats[ex.r[0]] = cats
-        return test_cats
-
-    def _invert_dict(self, d):
-        inv_d = dict()
-        for key, val in d.iteritems():
-            for v in val:
-                keys = inv_d.get(v, set())
-                keys.add(key)
-                inv_d[v] = keys
-        return inv_d
-
-
-    def sample_pos_cats(self,ex,is_target):
-        if is_target:
-            pos = self._entity_cats.get(ex.t,set())
-        else:
-            pos = self._entity_cats.get(ex.s,set())
-        test_cats = self._test_cats[ex.r[0]]
-        samples = test_cats.union(pos)
-        return samples
-
-    def sample_neg_cats(self, ex,is_target):
-        '''
-        Sample random categories and then add the NN categories as negatives. Remove all positives
-        :param ex:
-        :param is_target:
-        :return:
-        '''
-        all_cats = set(self._cat_entities.keys())
-        e = ex.t if is_target else ex.s
-        pos_cats = self._entity_cats.get(e,set())
-        candidates = list(all_cats.difference(set(pos_cats)))
-        samples = set(
-            [candidates[x] for x in np.random.choice(range(len(candidates)),
-                                                     size=constants.num_dev_negs, replace=False)])
-        test_cats = self._test_cats[ex.r[0]]
-        samples.update(test_cats.difference(pos_cats))
-        intersect = samples.intersection(pos_cats)
-        assert len(intersect) == 0
-        return list(samples)
-
-
 @util.memoize
 def load_params(params_path,model):
     print("Loading Params from {}".format(params_path))
@@ -205,11 +105,10 @@ def load_params(params_path,model):
     return Initialized(SparseParams(params),model.init_f)
 
 
-def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_path_data=False,is_cat=False):
+def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_path_data=False):
 
     data_set = {}
-    train = 'train_no_cats' if is_cat else 'train'
-    data_set['train'] = read_file(os.path.join(path,train),max_examples,is_path_data)
+    data_set['train'] = read_file(os.path.join(path,'train'),max_examples,is_path_data)
     if dev_mode:
         data_set['test'] = read_file(os.path.join(path,'dev'),max_examples,is_path_data)
     else:
@@ -255,13 +154,4 @@ def add_blanks(rels,entities,t):
         entities.append('e_pad')
 
     return rels,entities,'e_pad'
-
-@util.memoize
-def load_categories(cat_path):
-    print("Loading categories from {}".format(cat_path))
-
-    with open(cat_path) as f:
-        cats = pickle.load(f)
-    print("Finished loading category data")
-    return cats
 

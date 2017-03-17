@@ -21,10 +21,11 @@ param_scale = util.to_floatX(0.1)
 
 '''SGD Batch Size'''
 batch_size = 300
+test_batch_size = 100
 
 '''Report and Save model'''
-report_steps = 100
-save_steps = 200
+report_steps = 10
+save_steps = 20
 
 '''Early Stopping'''
 early_stop_counter = 5
@@ -32,8 +33,3 @@ early_stop_counter = 5
 '''Position of positive'''
 pos_position = 0
 
-
-'''Universal Category'''
-universal_cat = 'object'
-cat_rel = 'has_category'
-cat_file = '/home/mitarb/kotnis/Code/kge-master/kge/entity_cat.cpkl'
