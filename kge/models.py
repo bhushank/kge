@@ -28,7 +28,7 @@ class Model(object):
         self.model_name = config['model']
         self.e_d = config['entity_dim']
         self.neg_sampler = neg_sampler
-        self.neg_samples = config.get('num_dev_negs',constants.num_dev_negs)
+        self.neg_samples = constants.num_train_negs
         self.param_scale = config.get('param_scale',constants.param_scale)
         self.model = get_theano_model(self.model_name)
         self.fprop = self.model['fprop']
@@ -233,7 +233,7 @@ class Bilinear(Model):
 class S_Rescal(Model):
     def __init__(self,config,neg_sampler):
         super(S_Rescal, self).__init__(config, neg_sampler)
-        self.r_d = config.get('relation_dim',config['entity_dim'])
+        self.r_d = config.get('relation_dim')
 
     def unpack_params(self,params,batch):
         x_s, x_t, x_r = self.unpack_batch(params, batch)
@@ -274,25 +274,23 @@ class S_Rescal(Model):
         if key[0] == 'r':
             return util.to_floatX(self.param_scale * np.random.randn(self.r_d))
         if key[1] == 'W':
-            return util.to_floatX(self.param_scale * np.random.randn(self.r_d, self.r_d, self.r_d))
+            return util.to_floatX(self.param_scale * np.random.randn(self.r_d, self.e_d, self.e_d))
         raise NotImplementedError('Param not found')
 
 class HolE(S_Rescal):
     def __init__(self,config,neg_sampler):
-        config_cp = copy.copy(config)
-        config_cp['relation_dim'] = config['entity_dim']
-        config_cp['model'] = constants.s_rescal
-        super(HolE, self).__init__(config_cp, neg_sampler)
+        #config_cp = copy.copy(config)
+        super(HolE, self).__init__(config, neg_sampler)
 
     def bprop_model(self,grad,params,batch,is_target):
         x_s, x_t, x_r, W = self.unpack_params(params, batch)
         if is_target:
             X_t_batch, negs = self.unpack_neg_batch(params, batch, x_t, is_target)
-            gx_s, gx_t, gx_r, _ = self.bprop(x_s, X_t_batch, x_r, W)
+            gx_s, gx_t, gx_r = self.bprop(x_s, X_t_batch, x_r, W)
             self.collect_batch_grads(grad, batch, gx_s, gx_t, gx_r, negs, is_target)
         else:
             X_s_batch, negs = self.unpack_neg_batch(params, batch, x_s, is_target)
-            gx_s, gx_t, gx_r, _ = self.bprop(X_s_batch, x_t, x_r, W)
+            gx_s, gx_t, gx_r = self.bprop(X_s_batch, x_t, x_r, W)
             self.collect_batch_grads(grad, batch, gx_s, gx_t, gx_r, negs, is_target)
 
         return grad
@@ -302,7 +300,7 @@ class HolE(S_Rescal):
         if key[0] == 'e':
             return util.to_floatX(self.param_scale * np.random.randn(self.e_d, 1))
         if key[0] == 'r':
-            return util.to_floatX(self.param_scale * np.random.randn(self.r_d))
+            return util.to_floatX(self.param_scale * np.random.randn(self.e_d))
         if key[1] == 'W':
             # Correlation tensor is fixed, leads to fixed partitions
             return util.get_correlation_tensor(self.e_d)
@@ -315,8 +313,8 @@ class TransE(Model):
 
     def cost(self,params,batch):
         x_s, x_t, x_r = self.unpack_batch(params, batch)
-        X_t_batch, t_negs = self.unpack_neg_batch(params, batch, x_t, True)
-        return self.fprop(x_s, X_t_batch.T, x_r)/len(batch)
+        X_t_batch, negs = self.unpack_neg_batch(params, batch, x_t, True)
+        return self.fprop(x_s, np.transpose(X_t_batch, axes=[0, 2, 1]), x_r)/len(batch)
 
 
     def predict(self,params,batch):

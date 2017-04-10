@@ -15,6 +15,8 @@ def get_model(model):
         return s_rescal()
     elif model == constants.transE:
         return transE()
+    elif model == constants.hole:
+        return hole()
     else:
         raise NotImplementedError("Model {} not implemented".format(model))
 
@@ -42,8 +44,7 @@ def s_rescal():
                                           outputs_info=None)
     cost = T.sum(cost_results)
 
-    gx_s, gx_t, gx_r, gW_batch, = T.grad(cost,wrt=[X_s,X_t,x_r,W])
-    gW = gW_batch.sum()
+    gx_s, gx_t, gx_r, gW = T.grad(cost,wrt=[X_s,X_t,x_r,W])
 
     print('Compiling s-rescal fprop')
     fprop = theano.function([X_s,X_t,x_r,W],cost,name='fprop',mode='FAST_RUN')
@@ -54,6 +55,46 @@ def s_rescal():
     bprop.trust_input = True
 
     print('Compiling s-rescal score')
+    score = theano.function([X_s,X_t,x_r,W],score_results, name = 'score',mode='FAST_RUN')
+    score.trust_input = True
+
+    return {'fprop':fprop,'bprop':bprop,'score':score}
+
+#ToDo: Refactor
+def hole():
+    # Includes negatives, hence matrix
+    X_s = T.tensor3('x_s')
+    X_t = T.tensor3('x_t')
+    W  = T.tensor3('W')
+    x_r = T.matrix('x_r')
+
+    def batch_scores(u,v,r):
+        scores = r.dot(u.T.dot(W).dot(v))
+        scores = T.reshape(scores, (1, -1))
+        return scores[0]
+
+    def batch_cost(u, v, r):
+        scores = batch_scores(u,v,r)
+        return max_margin(scores)
+
+    score_results, updates = theano.scan(lambda u, v, r: batch_scores(u, v, r), sequences=[X_s, X_t, x_r]
+                                         ,outputs_info=None)
+
+    cost_results, updates = theano.scan(lambda u, v, r: batch_cost(u, v, r), sequences=[X_s, X_t, x_r],
+                                          outputs_info=None)
+    cost = T.sum(cost_results)
+
+    gx_s, gx_t, gx_r = T.grad(cost,wrt=[X_s,X_t,x_r])
+
+    print('Compiling hole fprop')
+    fprop = theano.function([X_s,X_t,x_r,W],cost,name='fprop',mode='FAST_RUN')
+    fprop.trust_imput = True
+
+    print('Compiling hole bprop')
+    bprop = theano.function([X_s,X_t,x_r,W],[gx_s,gx_t,gx_r],name='bprop',mode='FAST_RUN')
+    bprop.trust_input = True
+
+    print('Compiling hole score')
     score = theano.function([X_s,X_t,x_r,W],score_results, name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
@@ -111,7 +152,7 @@ def transE():
 
     def batch_scores(u,x_t,r):
         def calc_score(v):
-            return -1.0*T.sum(T.square(u + r - v))
+            return -1.0*T.sum(T.abs_(u + r - v))
         results, updates = theano.scan(lambda v: calc_score(v), sequences=[x_t], outputs_info=None)
         return results
 
@@ -123,7 +164,6 @@ def transE():
 
     cost_results, updates = theano.scan(lambda u, v, w: batch_costs(u, v, w), sequences=[x_s, X_t, x_r],
                                          outputs_info=None)
-
     cost = T.sum(cost_results)
     gx_s, gx_t, gx_r = T.grad(cost, wrt=[x_s, X_t, x_r])
 
@@ -153,7 +193,8 @@ def softmax_loss(score,y):
     cost = T.nnet.categorical_crossentropy(score, y)[0]
     return cost
 
-
+def norm(X):
+    return T.square(X).sum()
 
 def coupling_layer(X_s,X_t,W_p):
     '''

@@ -5,8 +5,8 @@ import json
 def main():
     data = 'freebase'
     base = "/home/mitarb/kotnis/Data/bordes/"
-    #bilinear('bilinear',data,base)
-    typeregularizer('tr', data, base)
+    bilinear('transE',data,base)
+
 def bilinear(model,data,base):
     path = base+"{}/experiment_specs/".format(data)
     exp_name = "{}_{}".format(data,model) + "{}.json"
@@ -15,7 +15,8 @@ def bilinear(model,data,base):
     count = 1
     for e in l2:
             config['l2'] = np.power(10,-e)
-            json.dump(config,open(path+exp_name.format("_"+str(count)),'w'))
+            json.dump(config,open(path+exp_name.format("_"+str(count)),'w'),
+                      sort_keys=True,separators=(',\n', ':'))
             count+=1
 
 def typeregularizer(model,data,base):
