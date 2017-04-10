@@ -4,7 +4,7 @@ import theano.tensor as T
 import theano
 import util
 import constants
-
+#ToDo: Push entire batch to GPU using scan. Scan can add the cost function.
 @util.memoize
 def get_model(model):
     if model==constants.bilinear:
@@ -15,22 +15,35 @@ def get_model(model):
         return s_rescal()
     elif model == constants.transE:
         return transE()
-    elif model == constants.tr:
-        return type_regularizer()
+    elif model == constants.hole:
+        return hole()
     else:
         raise NotImplementedError("Model {} not implemented".format(model))
 
 
 def s_rescal():
     # Includes negatives, hence matrix
-    X_s = T.matrix('x_s')
-    X_t = T.matrix('x_t')
+    X_s = T.tensor3('x_s')
+    X_t = T.tensor3('x_t')
     W  = T.tensor3('W')
-    x_r = T.vector('r')
+    x_r = T.matrix('x_r')
 
-    scores = x_r.dot(X_s.T.dot(W).dot(X_t))
-    scores = T.reshape(scores, (1, -1))
-    cost = max_margin(scores[0])
+    def batch_scores(u,v,r):
+        scores = r.dot(u.T.dot(W).dot(v))
+        scores = T.reshape(scores, (1, -1))
+        return scores[0]
+
+    def batch_cost(u, v, r):
+        scores = batch_scores(u,v,r)
+        return max_margin(scores)
+
+    score_results, updates = theano.scan(lambda u, v, r: batch_scores(u, v, r), sequences=[X_s, X_t, x_r]
+                                         ,outputs_info=None)
+
+    cost_results, updates = theano.scan(lambda u, v, r: batch_cost(u, v, r), sequences=[X_s, X_t, x_r],
+                                          outputs_info=None)
+    cost = T.sum(cost_results)
+
     gx_s, gx_t, gx_r, gW = T.grad(cost,wrt=[X_s,X_t,x_r,W])
 
     print('Compiling s-rescal fprop')
@@ -42,7 +55,47 @@ def s_rescal():
     bprop.trust_input = True
 
     print('Compiling s-rescal score')
-    score = theano.function([X_s,X_t,x_r,W],scores[0], name = 'score',mode='FAST_RUN')
+    score = theano.function([X_s,X_t,x_r,W],score_results, name = 'score',mode='FAST_RUN')
+    score.trust_input = True
+
+    return {'fprop':fprop,'bprop':bprop,'score':score}
+
+#ToDo: Refactor
+def hole():
+    # Includes negatives, hence matrix
+    X_s = T.tensor3('x_s')
+    X_t = T.tensor3('x_t')
+    W  = T.tensor3('W')
+    x_r = T.matrix('x_r')
+
+    def batch_scores(u,v,r):
+        scores = r.dot(u.T.dot(W).dot(v))
+        scores = T.reshape(scores, (1, -1))
+        return scores[0]
+
+    def batch_cost(u, v, r):
+        scores = batch_scores(u,v,r)
+        return max_margin(scores)
+
+    score_results, updates = theano.scan(lambda u, v, r: batch_scores(u, v, r), sequences=[X_s, X_t, x_r]
+                                         ,outputs_info=None)
+
+    cost_results, updates = theano.scan(lambda u, v, r: batch_cost(u, v, r), sequences=[X_s, X_t, x_r],
+                                          outputs_info=None)
+    cost = T.sum(cost_results)
+
+    gx_s, gx_t, gx_r = T.grad(cost,wrt=[X_s,X_t,x_r])
+
+    print('Compiling hole fprop')
+    fprop = theano.function([X_s,X_t,x_r,W],cost,name='fprop',mode='FAST_RUN')
+    fprop.trust_imput = True
+
+    print('Compiling hole bprop')
+    bprop = theano.function([X_s,X_t,x_r,W],[gx_s,gx_t,gx_r],name='bprop',mode='FAST_RUN')
+    bprop.trust_input = True
+
+    print('Compiling hole score')
+    score = theano.function([X_s,X_t,x_r,W],score_results, name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop':fprop,'bprop':bprop,'score':score}
@@ -53,13 +106,27 @@ def bilinear():
     Defines the Bilinear (RESCAL) model in theano
     :return: fprop, bprop, score
     '''
-    X_s = T.matrix('X_s')
-    X_t = T.matrix('X_t')
-    W_r = T.matrix('W_r')
+    X_s = T.tensor3('X_s')
+    X_t = T.tensor3('X_t')
+    W_r = T.tensor3('W_r')
 
-    scores = T.dot(X_s, T.dot(W_r, X_t))
-    scores = T.reshape(scores,(1,-1))
-    cost = max_margin(scores[0])
+
+    def batch_scores(x_s,x_t,w_r):
+        scores = T.dot(x_s, T.dot(w_r, x_t))
+        scores = T.reshape(scores,(1,-1))
+        return scores[0]
+    # score and cost are not called at the same time, so its not double computations.
+    def batch_cost(x_s,x_t,w_r):
+        scores = batch_scores(x_s,x_t,w_r)
+        cost = max_margin(scores)
+        return cost
+
+    score_results, updates = theano.scan(lambda u, v, w: batch_scores(u, v, w), sequences=[X_s, X_t, W_r], outputs_info=None)
+
+    cost_results, updates = theano.scan(lambda u, v, w: batch_cost(u, v, w), sequences=[X_s, X_t, W_r],
+                                        outputs_info=None)
+    cost = T.sum(cost_results)
+
     gx_s, gx_t, gW_r = T.grad(cost,wrt=[X_s,X_t,W_r])
 
     print('Compiling bilinear fprop')
@@ -71,7 +138,7 @@ def bilinear():
     bprop.trust_input = True
 
     print('Compiling bilinear score')
-    score = theano.function([X_s,X_t,W_r],scores[0], name = 'score',mode='FAST_RUN')
+    score = theano.function([X_s,X_t,W_r],score_results, name = 'score',mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop':fprop,'bprop':bprop,'score':score}
@@ -79,16 +146,25 @@ def bilinear():
 
 
 def transE():
-    x_s = T.vector('x_s')
-    X_t = T.matrix('x_t')
-    x_r = T.vector('r')
+    x_s = T.matrix('x_s')
+    X_t = T.tensor3('x_t')
+    x_r = T.matrix('x_r')
 
-    def calc_score(x_s,v,x_r):
-        return -1.0*T.sum(T.square(x_s + x_r - v))
+    def batch_scores(u,x_t,r):
+        def calc_score(v):
+            return -1.0*T.sum(T.abs_(u + r - v))
+        results, updates = theano.scan(lambda v: calc_score(v), sequences=[x_t], outputs_info=None)
+        return results
 
-    results, updates = theano.scan(lambda v: calc_score(x_s, v, x_r), sequences=[X_t], outputs_info=None)
+    def batch_costs(u,x_t,r):
+        scores = batch_scores(u,x_t,r)
+        return max_margin(scores)
 
-    cost = max_margin(results)
+    score_results, updates = theano.scan(lambda u, v, w: batch_scores(u, v, w), sequences=[x_s, X_t, x_r], outputs_info=None)
+
+    cost_results, updates = theano.scan(lambda u, v, w: batch_costs(u, v, w), sequences=[x_s, X_t, x_r],
+                                         outputs_info=None)
+    cost = T.sum(cost_results)
     gx_s, gx_t, gx_r = T.grad(cost, wrt=[x_s, X_t, x_r])
 
     print('Compiling transE fprop')
@@ -100,63 +176,11 @@ def transE():
     bprop.trust_input = True
 
     print('Compiling transE score')
-    score = theano.function([x_s, X_t, x_r], results, name='score', mode='FAST_RUN')
+    score = theano.function([x_s, X_t, x_r], score_results, name='score', mode='FAST_RUN')
     score.trust_input = True
 
     return {'fprop': fprop, 'bprop': bprop, 'score': score}
 
-
-
-def test():
-    W_c = T.matrix('w_c')
-    neg_cats = T.matrix('neg')
-    x_t = T.matrix('x_t')
-    neg_1 = T.nnet.sigmoid(T.dot(T.dot(W_c, neg_cats).T, x_t))
-    neg_2  = T.nnet.sigmoid(x_t.T.dot(W_c).dot(neg_cats))
-    n1 = theano.function([x_t,W_c,neg_cats],neg_1[:,0])
-    n2 = theano.function([x_t, W_c, neg_cats], neg_2[0])
-    return n1,n2
-
-def type_regularizer():
-    x_s = T.matrix('x_s')
-    x_t = T.matrix('x_t')
-    W_r = T.matrix('w_r')
-    W_c = T.matrix('w_c')
-    alpha = T.scalar('alpha')
-    pos_cats = T.matrix('pos')
-    neg_cats = T.matrix('neg')
-    #attn,pos = soft_attention(x_s,x_t,W_r,W_c,pos_cats)
-    pos = T.nnet.sigmoid(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
-    # Max Margin loss
-    neg = T.nnet.sigmoid(T.dot(T.dot(W_c, neg_cats).T,x_t))
-    margin = 1.0 - pos[0,0] + neg
-    pos_margin = T.maximum(T.zeros_like(margin), margin)
-    cost = alpha*T.max(pos_margin)
-    # Gradient
-    gx_s, gx_t, gx_r, gx_c, g_pos, g_neg = T.grad(cost, wrt=[x_s, x_t, W_r, W_c,pos_cats,neg_cats],consider_constant=[alpha])
-
-    print('Compiling soft type_regularizer fprop')
-    fprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats,alpha], cost, name='fprop', mode='FAST_RUN')
-    fprop.trust_imput = True
-
-    print('Compiling soft type_regularizer soft bprop')
-    bprop = theano.function([x_s, x_t, W_r, W_c,pos_cats,neg_cats,alpha],
-                            [gx_s, gx_t, gx_r, gx_c, g_pos, g_neg], name='bprop', mode='FAST_RUN')
-    bprop.trust_input = True
-
-    print('Compiling soft type_regularizer attention')
-    attn = theano.function([x_s,W_r,W_c,pos_cats], pos[0,0], name='attention', mode='FAST_RUN')
-    attn.trust_input = True
-
-    return {'fprop': fprop, 'bprop': bprop, 'attn': attn}
-
-
-
-def soft_attention(x_s,x_t,W_r,W_c,pos_cats):
-    # attention vector for slecting categories
-    a = T.nnet.softmax(x_s.T.dot(W_r).dot(W_c).dot(pos_cats))
-    score = x_t.T.dot(W_c).dot(pos_cats).dot(a[0].T)
-    return a[0],score
 
 def max_margin(scores):
     s = T.nnet.sigmoid(scores)
@@ -169,7 +193,8 @@ def softmax_loss(score,y):
     cost = T.nnet.categorical_crossentropy(score, y)[0]
     return cost
 
-
+def norm(X):
+    return T.square(X).sum()
 
 def coupling_layer(X_s,X_t,W_p):
     '''
@@ -239,17 +264,17 @@ Tests for layers
 '''
 
 def test_attention():
-    x_s = T.matrix('X_s')
-    x_t = T.matrix('X_t')
-    W_r = T.matrix('W_r')
+    X_s = T.tensor3('X_s')
+    W_r = T.tensor3('W_r')
     W_c = T.matrix('W_c')
-    pos_cats = T.matrix('pos')
-    attn, pos = soft_attention(x_s, x_t, W_r, W_c, pos_cats)
-    attn = theano.function([x_s, W_r, W_c, pos_cats], attn, name='attention', mode='FAST_RUN')
+    pos_cats = T.tensor3('pos')
+    attn, updates = theano.scan(lambda x_s, w_r, p, W_c: soft_attention(x_s, w_r, p, W_c),
+                             sequences=[X_s, W_r, pos_cats], non_sequences=[W_c],
+                             outputs_info=None)
+
+    attn = theano.function([X_s, W_r, pos_cats, W_c], attn, name='attention', mode='FAST_RUN')
     attn.trust_input = True
-    pos = theano.function([x_s, x_t, W_r, W_c, pos_cats], pos, name='pos', mode='FAST_RUN')
-    pos.trust_input = True
-    return attn,pos
+    return attn
 
 def test_coupling():
     X_s = T.matrix('x_s')

@@ -8,103 +8,39 @@ import util
 
 import models
 import numpy as np
-
-
+import theano
+import util
 def sigmoid(x):
     return np.exp(x) / (1.0 + np.exp(x))
 
 
 
-dim = 6
-num_cats = 5
-x_s = np.random.randn(dim,1)
-x_t = np.random.randn(dim,1)
-W_r = np.random.randn(dim,dim)
-W_c = np.random.randn(dim,dim)
-pos_cats = np.random.randn(dim,1)
-neg_cats = np.random.randn(dim,num_cats+4)
 
+import time
+theano.config.on_unused_input='ignore'
+dim = 100
+r_dim = 80
+X_s = util.to_floatX(np.random.randn(300,dim,1))
+x_r = util.to_floatX(np.random.randn(300,r_dim))
+X_t = util.to_floatX(np.random.randn(300, dim, 50))
+W = util.to_floatX(np.random.randn(r_dim,dim,dim))
 
-
-from theano_models import test
-n1,n2 = test()
-print(n1(x_t,W_c,neg_cats))
-print(n2(x_t,W_c,neg_cats))
-'''
-
-f = type_regularizer()
-attn = f['attn']
-print(attn(x_s,W_r,W_c,pos_cats))
-
-
-
-X_s = []
-X_t = []
-dim = 6
-x_s = np.random.randn(dim,1)
-W = np.random.randn(dim,dim,dim)
-x_r = np.random.randn(dim)
-for i in range(3):
-    X_t.append(np.random.randn(dim))
-
-X_t = np.transpose(np.asarray(X_t))
-
+theano.config.allow_gc = False
 from theano_models import s_rescal
 f = s_rescal()
-s = f['score'](x_s,X_t,x_r,W)
+start = time.time()
+s = f['fprop'](X_s,X_t,x_r,W,1.0)
 #s = f(X_s.T,X_t.T,W,x_r)
-print(s)
-print(s.shape)
+end = time.time()
+print(end-start)
 
-
-score = models.get_model('er-mlp')
-dim = 3
-X_s = []
-X_t = []
-x_r = np.random.randn(dim)
-np_score = []
-C = np.random.randn(dim,3*dim)
-w = np.random.randn(1,dim)
-
-for i in range(3):
-    X_s.append(np.random.randn(dim))
-    X_t.append(np.random.randn(dim))
-    x = np.concatenate([X_s[i], X_t[i], x_r])
-    np_score.append(sigmoid(np.dot(w,np.dot(C,x))))
-
-s = score['score'](np.asarray(X_s),np.asarray(X_t),x_r,C,w)
-print(np_score)
-print(s)
-'''
-''''
-paths = set()
-p1 = Path('s1',('r1',),'t1')
-p2 = Path('s2',('r2',),'t2')
-p3 = Path('s3',('r3',),'t3')
-print(p1)
-paths.add(p1)
-paths.add(p2)
-paths.add(p3)
-
-p_hit = Path('s1',('r1',),'t1')
-p_miss = Path('s1',('r2',),'t1')
-print(p_hit in paths)
-print(p_miss in paths)
-assert p_hit in paths and p_miss not in paths
-'''
-'''
-import json
-data = 'freebase'
-model  = 'transe'
-base = "/home/mitarb/kotnis/Data/grouped_bilinear/{}/experiment_specs/".format(data)
-exp_name = "{}_{}".format(data,model) + "{}.json"
-config = json.load(open(base + exp_name.format("")))
-l2_arr = [0.001,0.0001,0.01,0.1,0.00001]
-for l2 in l2_arr:
-    config['l2_reg'] = l2
-    json.dump(config,open(base+exp_name.format("_"+str(l2)),'w'))
 
 '''
+
+
+'''
+
+
 
 #w = util.get_correlation_tensor(3)
 #print(w)

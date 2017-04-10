@@ -54,7 +54,8 @@ def f1_score(true_positives,positives):
 
 def ranks(scores, ascending = True):
     sign = 1 if ascending else -1
-    idx = np.argsort(sign*scores)
+    scores = scores*sign
+    idx = np.argsort(scores)
     ranks = np.empty(scores.shape[0],dtype=int)
     ranks[idx] = np.arange(scores.shape[0])
     ranks += 1 # start from 1
@@ -89,8 +90,8 @@ def average_quantile(positives,negatives):
     filtered_ranks = [a - (p-1) for a,p in itertools.izip(all_ranks,pos_ranks)]
     n = len(negatives) + 1 # adjustment for -1 in quantile function
     # n-r will give the number of negatives after the positive for each positive
-    quantiles = np.nanmean([quantile(r,n) for r in filtered_ranks])
-    return np.nanmean(quantiles)
+    quantiles = np.mean([quantile(r,n) for r in filtered_ranks])
+    return quantiles
 
 # For one positive and many negatives
 def reciprocal_rank(scores,correct_pos):
@@ -105,8 +106,15 @@ def get_correlation_tensor(dim):
         W[i,:,i] = np.ones(dim,dtype=theano.config.floatX)
     return W
 
-def pad_zeros(arr):
+def pad_zeros(arr,dim):
 
-    pad = np.zeros((arr.shape[0],1),dtype=theano.config.floatX)
+    current_dim = arr.shape[1]
+    if current_dim > dim:
+        return arr[:,:dim]
+    pad = np.zeros((arr.shape[0],dim-current_dim),dtype=theano.config.floatX)
     padded = np.concatenate([arr,pad],axis=1)
     return padded
+
+def pad_empty(arr,dim):
+    if len(arr)==0:
+        return np.zeros((dim,1),dtype=theano.config.floatX)

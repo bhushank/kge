@@ -79,32 +79,29 @@ class Evaluater(object):
         raise NotImplementedError()
 
 class RankEvaluater(Evaluater):
-    def __init__(self,model,neg_sampler,num_samples):
+    def __init__(self,model,neg_sampler):
         self.neg_sampler = neg_sampler
         self.model = model
-        self.num_samples = num_samples
-        self.init_score = 10000 # because lower the better
+        self.num_negs = constants.num_train_negs
+        self.init_score = float('inf') # because lower the better
         self.metric_name = "Mean Rank"
+	self.tol = 0.1
 
     def comparator(self,curr_score,prev_score):
         # write if curr_score less than prev_score
-        return curr_score < prev_score
+        return curr_score < prev_score + self.tol
 
-    def evaluate(self,params,ex):
-        pos = self.model.predict(params,ex)
-        negs = self.neg_sampler.sample(ex,self.num_samples,True)
-        if len(negs) < 1:
-            return np.nan
-        scores = []
-        for n in negs:
-            ex = Path(ex.s,ex.r,n)
-            scores.append(self.model.predict(params,ex))
-        scores.insert(constants.pos_position,pos)
-        scores = np.asarray(scores)
-        ranks = util.ranks(scores.flatten(),ascending=False)
-        if ranks is None:
-            return np.nan
-        return ranks[constants.pos_position]
+    def evaluate(self,params,batch):
+        pos_scores = self.model.predict(params,batch).flatten()
+        mean_rank = []
+        for p,ex in zip(pos_scores,batch):
+            negs = self.neg_sampler.sample(ex,self.num_negs,True)
+            neg_ex = [Path(ex.s,ex.r,n) for n in negs]
+            scores = self.model.predict(params,neg_ex).flatten()
+            scores = np.insert(scores,constants.pos_position,p)
+            ranks = util.ranks(scores, ascending=False)
+            mean_rank.append(ranks[constants.pos_position])
 
+        return np.nanmean(mean_rank)
 
 

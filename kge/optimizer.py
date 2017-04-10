@@ -6,6 +6,7 @@ import cPickle as pickle
 import os
 import time
 import constants
+import copy
 
 class GradientDescent(object):
     def __init__(self,train,dev,updater,model,evaluater,results_dir,model_type,config,init_params=None):
@@ -13,7 +14,8 @@ class GradientDescent(object):
         self.train = train
         self.dev = dev
         self.batch_size = config.get('batch_size',constants.batch_size)
-        self.l2_reg = config.get('l2',util.to_floatX(0.0))
+        self.l2_reg = config['l2']
+        print("Setting L2 regularizer {:.5f}".format(self.l2_reg))
 
         if not init_params:
             init_params = SparseParams(d=dict())
@@ -30,7 +32,7 @@ class GradientDescent(object):
         # For reporting and saving params
         self.report_steps = constants.report_steps
         self.save_steps = constants.save_steps
-        self.dev_samples = config.get('num_dev_samples',constants.num_dev_samples) # number of dev samples
+        self.dev_samples = constants.num_dev_samples # number of dev samples
         # History
         self.history = {}
         self.grad_norm_history = []
@@ -41,9 +43,9 @@ class GradientDescent(object):
         #Early stopping
         self.halt = False
         self.prev_score = evaluater.init_score
-        self.early_stop_counter = config.get('early_stop',constants.early_stop_counter)
-        self.early_stop = self.early_stop_counter
-        self.max_steps = config['max_steps']
+        self.early_stop_counter = constants.early_stop_counter
+        self.patience = constants.early_stop_counter
+        self.max_epochs = config['num_epochs']
 
     def l2reg_grad(self,grad):
         l2_grad = SparseParams(dict())
@@ -56,14 +58,12 @@ class GradientDescent(object):
 
 
     def unit_norm(self,grad):
-
         for feature in grad:
             # Only for entities
             if feature[0]=='e':
                 self.params[feature] *= ( 1.0 / np.linalg.norm(self.params[feature]) )
 
     def grad_clipper(self,grad):
-
         norm = grad.norm2()
         self.grad_norm_history.append(norm)
         # take median of maximum of last 1000 steps
@@ -84,20 +84,17 @@ class GradientDescent(object):
         self.steps = 0
         #rand = np.random.RandomState(2568)
         self.save()
+
         while True:
             train_cp = list(self.train)
             np.random.shuffle(train_cp)
             batches = util.chunk(train_cp, self.batch_size)
 
             for batch in batches:
-                grad = SparseParams(d=dict())
-                for p in batch:
-                    grad_p = self.model.gradient(self.params,p)
-                    if grad_p.size() > 0:
-                        grad += grad_p
+                grad = self.model.gradient(self.params,batch)
 
                 if self.l2_reg!=0:
-                    grad += self.l2reg_grad(grad)
+                   grad += self.l2reg_grad(grad)
 
                 # grad normalization by batch size
                 grad *= 1.0 / len(batch)
@@ -122,16 +119,18 @@ class GradientDescent(object):
 
     def calc_obj(self,data, f,sample=True):
         if sample:
-            samples = util.sample(data, self.dev_samples)
+            samples = util.chunk(util.sample(data, self.dev_samples),100)
         else:
-            samples = data
+            samples = util.chunk(data,100)
 
-        values = [f(self.params, x) for x in samples]
+        values = [f(self.params,np.asarray(s)) for s in samples]
         return np.nanmean(values)
 
 
     def save(self):
+        #if True:
         if self.steps % self.save_steps == 0:
+            self.evaluater.num_negs = constants.num_dev_negs
             curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,True)
             epochs = float(self.steps * self.batch_size) / len(self.train)
             print 'steps: {}, epochs: {:.2f}'.format(self.steps, epochs)
@@ -148,19 +147,20 @@ class GradientDescent(object):
                     pickle.dump(self.params.as_dict(),f)
                 self.prev_score = curr_score
                 # Reset early stop counter
-                self.early_stop_counter = self.early_stop
+                self.early_stop_counter = copy.copy(self.patience)
             else:
                 self.early_stop_counter -= 1
                 print("New params worse than current, skip saving...")
             # Stopping Criterion, do at least 4 epochs
-            if epochs > 4.0:
-                if self.early_stop_counter == 0 or self.steps > self.max_steps:
+            if epochs >= 4.0:
+                if self.early_stop_counter == 0 or epochs >= self.max_epochs:
                     self.halt = True
 
 
     def report(self,delta):
-
+        #if True:
         if self.steps % self.report_steps == 0:
+            self.evaluater.num_negs = constants.num_dev_negs
             grad_norm = self.gnorm
             delta_norm = delta.norm2()
             norm_rep = "Gradient Norm: {:.3f}, Delta Norm: {:.3f}".format(grad_norm,delta_norm)
