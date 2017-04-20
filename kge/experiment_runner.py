@@ -15,7 +15,7 @@ import numpy as np
 import constants
 import copy
 import theano
-from evaluation import TestEvaluater
+from evaluation import TestEvaluater,RankEvaluater
 def main(exp_name,data_path):
     config = json.load(open(os.path.join(data_path,'experiment_specs',"{}.json".format(exp_name))))
 
@@ -26,8 +26,6 @@ def main(exp_name,data_path):
         test(config,exp_name,data_path)
     elif operation=='train_test':
         train_test(config,exp_name,data_path)
-    elif operation=='visualize':
-        visualize_relation(config,exp_name,data_path,"/tv/tv_genre/programs")
     else:
         raise NotImplementedError("{} Operation Not Implemented".format(operation))
 
@@ -40,7 +38,9 @@ def train(config,exp_name,data_path):
     os.makedirs(results_dir)
     json.dump(config,open(os.path.join(results_dir,'config.json'),'w'),
               sort_keys=True,separators=(',\n', ': '))
-    data_set = data.read_dataset(data_path,dev_mode=True)
+    is_typed = config.get('is_typed',False)
+    print("Typed Regularizer {}".format(is_typed))
+    data_set = data.read_dataset(data_path,dev_mode=True,is_typed=is_typed)
     is_dev = config['is_dev']
     print("\n***{} MODE***\n".format('DEV' if is_dev else 'TEST'))
     print("Number of training data points {}".format(len(data_set['train'])))
@@ -49,10 +49,11 @@ def train(config,exp_name,data_path):
     # Set up functions and params
     neg_sampler = data.NegativeSampler(data_set['train'])
     model = models.get_model(config,neg_sampler)
-    evaluater = algorithms.RankEvaluater(model,neg_sampler)
+    evaluater = RankEvaluater(model,neg_sampler)
     updater = algorithms.Adam()
+    typed_data = data_set['typed'] if is_typed else None
     minimizer = optimizer.GradientDescent(data_set['train'],data_set['test'],updater,
-                                          model,evaluater,results_dir,'single',config)
+                                          model,evaluater,results_dir,'single',config,is_typed=is_typed,typed_data=typed_data)
     print('Training {}...\n'.format(config['model']))
     start = time.time()
     minimizer.minimize()
@@ -84,7 +85,7 @@ def test(config,exp_name,data_path):
     params = data.load_params(params_path, model)
     print("Number of Test Samples {}".format(len(data_set['test'])))
     evaluater = TestEvaluater(model, neg_sampler,params, is_dev, results_dir)
-    evaluate(data_set['test'],evaluater,results_dir)
+    evaluate(data_set['test'],evaluater,results_dir,is_dev)
 
 
 
@@ -96,7 +97,7 @@ def train_test(config,exp_name,data_path):
 def hit_count(data,params,model,neg_sampler):
     hits = 0
 
-def evaluate(data,evaluater,results_dir):
+def evaluate(data,evaluater,results_dir,is_dev):
     print("Evaluating")
     h10,mrr = 0.0,0.0
     start = time.time()
@@ -115,10 +116,11 @@ def evaluate(data,evaluater,results_dir):
             start = time.time()
 
     print('Writing Results.')
+    split = 'dev' if is_dev else 'test'
     all_ranks = [str(x) for x in evaluater.all_ranks]
-    with open(os.path.join(results_dir,'ranks'),'w') as f:
+    with open(os.path.join(results_dir,'ranks_{}'.format(split)),'w') as f:
         f.write("\n".join(all_ranks))
-    with open(os.path.join(results_dir,'results'),'w') as f:
+    with open(os.path.join(results_dir,'results_{}.'.format(split)),'w') as f:
         f.write("Mean Reciprocal Rank : {:.4f}\nHITS@10 : {:.4f}\n".
                 format(mrr,h10))
 

@@ -34,3 +34,6 @@ early_stop_counter = 5
 '''Position of positive'''
 pos_position = 0
 
+category='has_cat'
+cat_file = 'entity_cat.cpkl'
+#cat_file='entity_cat.cpkl'

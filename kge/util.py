@@ -5,6 +5,8 @@ import theano
 import itertools
 
 def chunk(arr,chunk_size):
+    if len(arr)==0:
+        yield arr
     for i in range(0,len(arr),chunk_size):
         yield arr[i:i+chunk_size]
 
@@ -53,6 +55,8 @@ def f1_score(true_positives,positives):
 
 
 def ranks(scores, ascending = True):
+    if np.max(scores) == np.min(scores):
+        return float(len(scores))
     sign = 1 if ascending else -1
     scores = scores*sign
     idx = np.argsort(scores)

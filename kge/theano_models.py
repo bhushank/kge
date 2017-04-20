@@ -144,7 +144,6 @@ def bilinear():
     return {'fprop':fprop,'bprop':bprop,'score':score}
 
 
-
 def transE():
     x_s = T.matrix('x_s')
     X_t = T.tensor3('x_t')
@@ -152,7 +151,8 @@ def transE():
 
     def batch_scores(u,x_t,r):
         def calc_score(v):
-            return -1.0*T.sum(T.abs_(u + r - v))
+            return -1.0*T.sum(T.sqr(u + r - v))
+
         results, updates = theano.scan(lambda v: calc_score(v), sequences=[x_t], outputs_info=None)
         return results
 

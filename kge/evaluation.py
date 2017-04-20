@@ -24,18 +24,17 @@ class RankEvaluater(Evaluater):
         # write if curr_score less than prev_score
         return curr_score < prev_score + self.tol
 
-    def evaluate(self,batch,num_negs):
+    def evaluate(self,params,batch,num_negs=constants.num_dev_negs):
 
-        pos_scores = self.model.predict(batch).data.cpu().numpy()
+        pos_scores = self.model.predict(params,batch).flatten()
         mean_rank = []
         for p,ex in zip(pos_scores,batch):
             negs = self.neg_sampler.sample(ex,num_negs,True)
             neg_batch = [Path(ex.s,ex.r,n) for n in negs]
-            scores = self.model.predict(neg_batch).data.cpu().numpy().flatten()
+            scores = self.model.predict(params,neg_batch).flatten()
             scores = np.append(scores,p)
             ranks = util.ranks(scores, ascending=False)
             mean_rank.append(ranks[-1])
-
 
         return np.nanmean(mean_rank)
 

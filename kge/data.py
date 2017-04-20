@@ -61,13 +61,22 @@ class Path(object):
 
 class NegativeSampler(object):
 
-    def __init__(self,triples):
+    def __init__(self,triples,cats=None):
         self._triples = set(triples)
         self._l_entities, self._entity_set = self._get_entities(triples)
         self.total_ents = copy.copy(len(self._l_entities))
         self.s_filter = self.compute_filter(False)
         self.t_filter = self.compute_filter(True)
+        if cats is not None:
+            self.ent_cats = cats
+            self.cats = self.all_cats()
+        #self.typed = False
 
+    def all_cats(self):
+        all_cats = set()
+        for _,cats in self.ent_cats.viewitems():
+            all_cats.update(cats)
+        return all_cats
 
     def compute_filter(self,is_target):
         filter = dict()
@@ -88,8 +97,8 @@ class NegativeSampler(object):
             entities.add(ex.t)
         return list(entities), set(entities)
 
-    def sample(self,ex,num_samples,is_target=True):
-        def get_candidates(r):
+    def sample(self,ex,num_samples,is_target=True,is_typed=False):
+        def get_candidates():
             '''
             Returns a copy of the candidates, so that sampled negatives
             can be removed from the copy without affecting state
@@ -97,25 +106,32 @@ class NegativeSampler(object):
             :param r: string
             :return: candidates: set
             '''
-            if self.typed:
-                candidates = self._typed_negs[r]
-                if is_target:
-                    return copy.copy(candidates[1])
-                else:
-                    return copy.copy(candidates[0])
-            return copy.copy(self._entities)
+            if is_typed:
+                gold = ex.t if is_target else ex.s
+                pos = self.ent_cats.get(gold,set())
+                negs = self.cats.copy()
+                for p in pos:
+                    negs.remove(p)
+                return list(negs)
+            #    candidates = self._typed_negs[r]
+            #    if is_target:
+            #        return copy.copy(candidates[1])
+            #    else:
+            #        return copy.copy(candidates[0])
+            return self._l_entities
 
         samples = set()
+        candidates = get_candidates()
         gold = ex.t if is_target else ex.s
-        if len(self._entity_set) <= num_samples:
-            assert len(self._entity_set) == self.total_ents
-            return self._entity_set
+        if len(candidates) <= num_samples:
+            assert len(candidates) == self.total_ents
+            return list(copy.copy(candidates))
         # Number of entities is very high
         while True:
-            idx = np.random.randint(0, len(self._l_entities))
-            p = Path(ex.s, ex.r, self._l_entities[idx]) if is_target else  Path(self._l_entities[idx], ex.r, ex.t)
-            if p not in self._triples and (not self._l_entities[idx] == gold):
-                    samples.add(self._l_entities[idx])
+            idx = np.random.randint(0, len(candidates))
+            p = Path(ex.s, ex.r, candidates[idx]) if is_target else  Path(candidates[idx], ex.r, ex.t)
+            if p not in self._triples and (not candidates[idx] == gold):
+                    samples.add(candidates[idx])
 
             if len(samples) >= num_samples:
                 return list(samples)
@@ -144,10 +160,13 @@ def load_params(params_path,model):
     return Initialized(SparseParams(params),model.init_f)
 
 
-def read_dataset(path,dev_mode=True,max_examples = float('inf')):
+def read_dataset(path,dev_mode=True,max_examples = float('inf'),is_typed=False):
 
     data_set = {}
-    data_set['train'] = read_file(os.path.join(path,'train'),max_examples)
+    if is_typed:
+        data_set['train'],data_set['typed'] = read_file(os.path.join(path,'train'),max_examples,is_typed)
+    else:
+        data_set['train'] = read_file(os.path.join(path,'train'),max_examples,is_typed)
     if dev_mode:
         data_set['test'] = read_file(os.path.join(path,'dev'),max_examples)
     else:
@@ -156,9 +175,10 @@ def read_dataset(path,dev_mode=True,max_examples = float('inf')):
 
     return data_set
 
-def read_file(f_name,max_examples):
+def read_file(f_name,max_examples,is_typed=False):
     data = []
     count = 0
+    typed_data = []
     with open(f_name) as f:
         for line in f:
             if count >= max_examples:
@@ -170,7 +190,19 @@ def read_file(f_name,max_examples):
             p = Path(s, tuple(rels), t)
             data.append(p)
             count += 1
+    if is_typed:
+        cats = load_cats()
+        for e,cats in cats.viewitems():
+            for c in cats:
+                p = Path(e,(constants.category,),c)
+                typed_data.append(p)
+    if is_typed and 'train' in f_name:
+        return data,typed_data
     return data
+
+def load_cats():
+    cats = pickle.load(open(constants.cat_file))
+    return cats
 
 def add_blanks(rels,entities,t):
     if len(rels) == 4:

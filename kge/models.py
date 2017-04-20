@@ -6,7 +6,7 @@ import theano
 import util
 from theano_models import get_model as get_theano_model
 import constants
-import copy
+
 
 def get_model(config, neg_sampler):
     model = config['model']
@@ -34,6 +34,8 @@ class Model(object):
         self.fprop = self.model['fprop']
         self.bprop = self.model['bprop']
         self.score = self.model['score']
+        self.alpha = config.get('alpha',1.0)
+
 
 
     def cost(self,params,batch):
@@ -49,7 +51,7 @@ class Model(object):
     def predict(self,params,ex):
         raise NotImplementedError()
 
-    def gradient(self,params,batch):
+    def gradient(self,params,batch,type_batch_s=None,type_batch_t=None):
         '''
         Computes the gradient SparseParams
         :param params: Initialized SparseParams
@@ -61,6 +63,7 @@ class Model(object):
         grad = self.bprop_model(grad, params, batch, True)
         # back prop for source negatives
         grad = self.bprop_model(grad, params, batch, False)
+
         return grad
 
     def bprop_model(self,grad,params,ex,is_target):
@@ -153,7 +156,7 @@ class Model(object):
 
     def collect_batch_entity_grads(self,grad,entities,g_e,enforce_shape):
         for ind,e in enumerate(entities):
-            grad = self.collect_entity_grads(grad,('e',e),g_e[ind],enforce_shape)
+            grad = self.collect_entity_grads(grad,e,g_e[ind],enforce_shape)
         return grad
 
     def collect_entity_grads(self,grad,e,g_e,enforce_shape):
@@ -170,8 +173,9 @@ class Model(object):
             grad[key] = val
         return grad
 
-    def collect_batch_grads(self, grad, batch, gx_s, gx_t, gW_r, negs, is_target):
 
+
+    def collect_batch_grads(self, grad, batch, gx_s, gx_t, gW_r, negs, is_target):
         for ind, ex in enumerate(batch):
             if is_target:
                 grad = self.collect_entity_grads(grad, ex.s, gx_s[ind], self.enforce_shape)
