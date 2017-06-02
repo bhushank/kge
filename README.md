@@ -28,6 +28,6 @@ Additional specifications (early stopping, save and report time, etc) can be cha
 # Usage
 To train and test simply run python experiment_runner.py "data_dir" "experiment_name"  
 where experiment_name is the name of the JSON file without the .json extension  
-**python experiment_runner.py ./data freebase_bilinear**
+**python experiment_runner.py ./data/ freebase_bilinear**
 
 
