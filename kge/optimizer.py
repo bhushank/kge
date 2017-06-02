@@ -7,7 +7,7 @@ import os
 import time
 import constants
 import copy
-from data import Path
+
 class GradientDescent(object):
     def __init__(self,train,dev,updater,model,evaluater,results_dir,model_type,config,init_params=None,is_typed=False,typed_data=None):
 
@@ -104,7 +104,7 @@ class GradientDescent(object):
             self.params += delta
             self.steps += 1
             # Make sure all entity params have unit norms. unit_norm changes self.params
-            #self.unit_norm(delta)
+            self.unit_norm(delta)
 
             # Reports progress
             self.report(delta,is_tr)
@@ -147,7 +147,7 @@ class GradientDescent(object):
 
 
     def save(self):
-        #if True:
+
         if self.steps % self.save_steps == 0:
             self.evaluater.num_negs = constants.num_dev_negs
             curr_score = self.calc_obj(self.dev,self.evaluater.evaluate,True)
@@ -158,8 +158,8 @@ class GradientDescent(object):
             if self.evaluater.comparator(curr_score, self.prev_score) or epochs<1:
                 print("Saving params...")
                 # Write history of objective func to disk
-                #with open(os.path.join(self.results_dir,'history_{}.cpkl'.format(self.model_type)),'w') as f:
-                #    pickle.dump(self.history,f)
+                with open(os.path.join(self.results_dir,'history_{}.cpkl'.format(self.model_type)),'w') as f:
+                   pickle.dump(self.history,f)
 
                 # Write parameters to disk
                 with open(os.path.join(self.results_dir,'params_{}.cpkl'.format(self.model_type)),'w') as f:
@@ -177,7 +177,7 @@ class GradientDescent(object):
 
 
     def report(self,delta,is_tr=False):
-        #if True:
+
         if self.steps % (self.report_steps) == 0:
             self.evaluater.num_negs = constants.num_dev_negs
             grad_norm = self.gnorm

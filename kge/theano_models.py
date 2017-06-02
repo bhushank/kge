@@ -4,7 +4,7 @@ import theano.tensor as T
 import theano
 import util
 import constants
-#ToDo: Push entire batch to GPU using scan. Scan can add the cost function.
+
 @util.memoize
 def get_model(model):
     if model==constants.bilinear:

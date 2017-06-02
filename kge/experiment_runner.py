@@ -5,16 +5,14 @@ import argparse
 import json
 import os
 import data
-from data import Path
+
 import algorithms
 import models
 import optimizer
 import util
 import time
-import numpy as np
 import constants
 import copy
-import theano
 from evaluation import TestEvaluater,RankEvaluater
 def main(exp_name,data_path):
     config = json.load(open(os.path.join(data_path,'experiment_specs',"{}.json".format(exp_name))))
@@ -93,9 +91,6 @@ def train_test(config,exp_name,data_path):
     train(config,exp_name,data_path)
     test(config,exp_name,data_path)
 
-#ToDo: Messy code, refactor
-def hit_count(data,params,model,neg_sampler):
-    hits = 0
 
 def evaluate(data,evaluater,results_dir,is_dev):
     print("Evaluating")

@@ -369,6 +369,4 @@ class TransE(Model):
 
 
 
-class CoupledRescal(Model):
-    def __init__(self,config,neg_sampler):
-        super(CoupledRescal, self).__init__(config, neg_sampler)
+

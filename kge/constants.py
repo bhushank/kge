@@ -12,7 +12,7 @@ transE = 'transE'
 '''Negatives'''
 num_train_negs = 10
 num_dev_negs = 100
-num_test_negs = 1000#float('inf')
+num_test_negs = float('inf')
 
 '''Dev Samples'''
 num_dev_samples = 200
@@ -36,4 +36,3 @@ pos_position = 0
 
 category='has_cat'
 cat_file = 'entity_cat.cpkl'
-#cat_file='entity_cat.cpkl'

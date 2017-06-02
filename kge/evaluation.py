@@ -115,8 +115,7 @@ class TestEvaluater(Evaluater):
         else:
             s_negs= self.neg_sampler.bordes_negs(ex,False,1000)
             t_negs = self.neg_sampler.bordes_negs(ex,True,1000)
-        #num_s_negs = len(s_negs)
-        #num_t_negs = len(t_negs)
+
 
         s_negs  = self.pack_negs(ex, s_negs,False)
         t_negs  = self.pack_negs(ex, t_negs, True)
@@ -125,5 +124,4 @@ class TestEvaluater(Evaluater):
         negs_t = util.chunk(t_negs, constants.test_batch_size)
         s_rank = calc_scores(negs_s)
         t_rank = calc_scores(negs_t)
-        #print("{},{}".format(s_rank,t_rank))
         return s_rank,t_rank

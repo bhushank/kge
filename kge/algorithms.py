@@ -85,13 +85,19 @@ class RankEvaluater(Evaluater):
         self.num_negs = constants.num_train_negs
         self.init_score = float('inf') # because lower the better
         self.metric_name = "Mean Rank"
-	self.tol = 0.1
+
 
     def comparator(self,curr_score,prev_score):
         # write if curr_score less than prev_score
-        return curr_score < prev_score + self.tol
+        return curr_score < prev_score
 
     def evaluate(self,params,batch):
+        '''
+        Computes mean rank
+        :param params: model parameters
+        :param batch: data batch
+        :return: mean rank 
+        '''
         pos_scores = self.model.predict(params,batch).flatten()
         mean_rank = []
         for p,ex in zip(pos_scores,batch):
