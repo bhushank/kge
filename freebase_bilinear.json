@@ -1,7 +1,9 @@
 {
-"exp_name":"freebase",
+"exp_name":"freebase_bilinear",
 "model":"bilinear",
 "is_dev":true,
+ "is_typed":true,
+  "alpha":0.1,
 "entity_dim":100,
 "l2":0.0001,
 "param_scale":0.1,
