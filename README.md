@@ -5,4 +5,7 @@ This code implements the state-of-the-art Knowledge Graph Embedding [algorithms]
 
 # Installation
 ## Data
+* Create a data directory and download FB15K datasets from [here](https://everest.hds.utc.fr/lib/exe/fetch.php?media=en:fb15k.tgz)
+* Rename freebase_mtr100_mte100-train.txt, freebase_mtr100_mte100-valid.txt, freebase_mtr100_mte100-test.txt as train, dev, test respectively. These files should reside inside the data directory.
+
 
