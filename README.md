@@ -1,7 +1,7 @@
 # Knowledge Graph Embeddings with Type Regularizer
 
 
-This code implements the state-of-the-art Knowledge Graph Embedding [algorithms](http://www.cs.technion.ac.il/~gabr/publications/papers/Nickel2016RRM.pdf) such as [RESCAL](http://www.dbs.ifi.lmu.de/~tresp/papers/p271.pdf), [TransE](http://papers.nips.cc/paper/5071-translating-embeddings-for-modeling-multi-relational-data), [HOLE](http://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/download/12484/11828), and S-RESCAL with added Type Regularizer for Freebase. Computational Graphs are implemented using [Theano](http://deeplearning.net/software/theano/). Available SGD Algorithms ADAM, Adagrad. Algorithms are hand coded and implementing SGD variations should be straightforward.
+This code implements the state-of-the-art Knowledge Graph Embedding [algorithms](http://www.cs.technion.ac.il/~gabr/publications/papers/Nickel2016RRM.pdf) such as [RESCAL](http://www.dbs.ifi.lmu.de/~tresp/papers/p271.pdf), [TransE](http://papers.nips.cc/paper/5071-translating-embeddings-for-modeling-multi-relational-data), [HOLE](http://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/download/12484/11828), and S-RESCAL with added Type Regularizer for Freebase. Computational Graphs are implemented using [Theano](http://deeplearning.net/software/theano/). Available SGD Algorithms : ADAM, Adagrad. Algorithms are hand coded and implementing SGD variations should be straightforward.
 
 # Installation
 ## Data
@@ -26,8 +26,16 @@ This code implements the state-of-the-art Knowledge Graph Embedding [algorithms]
 Additional specifications (early stopping, save and report time, etc) can be changed by modifying constants.py
 
 # Usage
-To train and test simply run python experiment_runner.py "data_dir" "experiment_name"  
+To train and test simply run  
+*python experiment_runner.py "data_dir" "experiment_name"*  
 where experiment_name is the name of the JSON file without the .json extension  
 **python experiment_runner.py ./data/ freebase_bilinear**
+
+# Extending the Code
+* Implementing new model
+  * Implement Theano models in theano_models.py
+  * Implement bprop, cost (fprop) and init_f for parameter initialization functions in model.py. Additionally if your model has a different architecture then you may need to implement gradient collection and data unpacking methods.
+* Implementing SGD Algorithm
+  * Extend the Updater class in Algorithms.py and add an update method.
 
 
