@@ -25,4 +25,8 @@ This code implements the state-of-the-art Knowledge Graph Embedding [algorithms]
 * "param_scale": Parameter Initialization Scale (default 0.1)
 Additional specifications (early stopping, save and report time, etc) can be changed by modifying constants.py
 
+# Usage
+To train and test simply run python experiment_runner.py "data_dir" "experiment_name"
+where experiment_name is the name of the JSON file without the .json extension
+
 
