@@ -16,12 +16,13 @@ This code implements the state-of-the-art Knowledge Graph Embedding [algorithms]
 * "batch_size": Train Batch Size (default 300),
 * "entity_dim": Embedding Dimension (must be specified),
 * "exp_name": Experiment Name,
-"is_dev": True if you want to test on validation data (must be specified),
-"is_typed": True if you want to use Type Regularizer (default False),
-"alpha": Strength of Type Regularizer (default 1.0),
-"l2": Strength of L2 regularizer (must be specified),
-"model": Model (bilinear, transE, s-rescal, hole) (must be specified),
-"num_epochs": Max number of epochs (default 100),
-"param_scale": Parameter Initialization Scale (default 0.1)
+* "is_dev": True if you want to test on validation data (must be specified),
+* "is_typed": True if you want to use Type Regularizer (default False),
+* "alpha": Strength of Type Regularizer (default 1.0),
+* "l2": Strength of L2 regularizer (must be specified),
+* "model": Model (bilinear, transE, s-rescal, hole) (must be specified),
+* "num_epochs": Max number of epochs (default 100),
+* "param_scale": Parameter Initialization Scale (default 0.1)
+Additional specifications (early stopping, save and report time, etc) can be changed by modifying constants.py
 
 
